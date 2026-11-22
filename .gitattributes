@@ -1,0 +1,23 @@
+# Normalisasi akhir baris: teks di repo memakai LF.
+* text=auto eol=lf
+
+# Skrip Windows harus tetap CRLF agar cmd.exe aman.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Berkas biner
+*.exe binary
+*.dll binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.ttc binary
+
+# Jangan tampilkan sebagai teks di diff
+*.png -diff
+*.ico -diff

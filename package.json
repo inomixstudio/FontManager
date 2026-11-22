@@ -2,12 +2,52 @@
   "name": "font-manager",
   "version": "1.2.0",
   "private": true,
-  "description": "Font Manager lokal untuk Windows: deteksi, pratinjau, lacak, pasang, dan hapus font terinstal.",
+  "description": "Manajer font lokal untuk Windows: deteksi, pratinjau, lacak, pasang, cadangkan, dan hapus font terinstal — termasuk font langganan Adobe Fonts.",
+  "keywords": [
+    "font-manager",
+    "windows",
+    "fonts",
+    "font-preview",
+    "adobe-fonts",
+    "creative-cloud",
+    "typekit",
+    "registry",
+    "webview2"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "inomixstudio",
+    "url": "https://github.com/inomixstudio"
+  },
+  "homepage": "https://github.com/inomixstudio/FontManager#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inomixstudio/FontManager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/inomixstudio/FontManager/issues"
+  },
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:no-window": "node -e \"process.env.FM_NO_OPEN='1';require('./server.js')\"",
+    "test": "node scripts/progresstest.js",
+    "check": "node --check server.js && node --check public/app.js && node --check lib/fontParser.js && node --check lib/registry.js && node --check lib/scanner.js && node --check lib/adobeFonts.js && node --check lib/manage.js && node --check lib/store.js"
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "os": [
+    "win32"
+  ],
+  "files": [
+    "server.js",
+    "lib/",
+    "public/",
+    "desktop/",
+    "scripts/",
+    "start.bat",
+    "README.md",
+    "LICENSE"
+  ]
 }

@@ -1,0 +1,43 @@
+name: Usulan fitur
+description: Usulkan fitur atau peningkatan
+title: "[Fitur] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Masalah yang ingin diselesaikan
+      description: Apa yang sulit dilakukan saat ini?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Usulan solusi
+      description: Bagaimana perilaku yang Anda harapkan?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatif yang dipertimbangkan
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Pemindaian & deteksi font
+        - Pengelompokan keluarga
+        - Pratinjau & tampilan
+        - Pelacakan
+        - Hapus / pasang / pulihkan
+        - Adobe Fonts
+        - Host desktop
+        - Lainnya
+    validations:
+      required: true

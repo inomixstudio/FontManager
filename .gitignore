@@ -1,8 +1,20 @@
+# Dependensi & data lokal
 node_modules/
 data/
 *.log
+npm-debug.log*
+
+# Artefak build host desktop (dibuat oleh desktop/build-desktop.bat)
 desktop/FontManager.exe
-desktop/Microsoft.Web.WebView2.Core.dll
-desktop/Microsoft.Web.WebView2.WinForms.dll
-desktop/WebView2Loader.dll
+desktop/*.dll
+desktop/obj/
+desktop/bin/
+
+# Berkas sistem Windows yang ikut terbawa saat folder disalin
 AdobeFnt25.lst
+desktop.ini
+Thumbs.db
+
+# Berkas sementara alat pengembang
+tmp-*.json
+*.tmp

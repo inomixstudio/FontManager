@@ -1,0 +1,75 @@
+name: Laporan bug
+description: Laporkan perilaku yang tidak sesuai
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terima kasih sudah melapor. **Jangan** melaporkan celah keamanan di sini —
+        gunakan [SECURITY.md](https://github.com/inomixstudio/FontManager/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Versi Font Manager
+      description: Terlihat di nama rilis, atau dari `package.json`.
+      placeholder: "1.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Lingkungan
+      description: Versi Windows dan Node.js (`node --version`).
+      placeholder: "Windows 11 23H2, Node.js 22.11.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Langkah reproduksi
+      placeholder: |
+        1. Buka tab Adobe
+        2. Klik ...
+        3. Terjadi ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Perilaku yang diharapkan
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Perilaku yang terjadi
+      description: Sertakan pesan galat bila ada.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log
+      description: |
+        Tempelkan isi `%LOCALAPPDATA%\FontManager\error.log` bila ada.
+        Hapus path atau nama berkas pribadi bila perlu.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Konfirmasi
+      options:
+        - label: Saya sudah memeriksa issue yang ada dan tidak menemukan duplikat.
+          required: true
+        - label: Laporan ini bukan masalah keamanan.
+          required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Laporan keamanan (privat)
+    url: https://github.com/inomixstudio/FontManager/security/advisories/new
+    about: Laporkan celah keamanan secara privat, bukan lewat issue publik.
+  - name: Rilis terbaru
+    url: https://github.com/inomixstudio/FontManager/releases/latest
+    about: Unduh versi terbaru dan lihat catatan rilis.

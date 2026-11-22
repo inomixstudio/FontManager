@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Sintaks & konsistensi
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Periksa sintaks seluruh berkas JavaScript
+        shell: pwsh
+        run: |
+          $files = @('server.js') + (Get-ChildItem -Recurse -Filter *.js -Path lib,public,scripts | ForEach-Object FullName)
+          $failed = 0
+          foreach ($f in $files) {
+            node --check $f
+            if ($LASTEXITCODE -ne 0) { Write-Error "Sintaks gagal: $f"; $failed = 1 }
+          }
+          if ($failed -eq 1) { exit 1 }
+          Write-Host "OK: $($files.Count) berkas diperiksa."
+
+      - name: Validasi package.json
+        run: node -e "const p=require('./package.json'); if(!p.name||!p.version||!p.license) { console.error('package.json tidak lengkap'); process.exit(1); } console.log(p.name, p.version, p.license);"
+
+      - name: Pastikan tidak ada innerHTML dengan data dinamis di UI
+        shell: pwsh
+        run: |
+          $hits = Select-String -Path public/app.js -Pattern 'innerHTML\s*=\s*(?!ICONS|svg)' -AllMatches
+          if ($hits) {
+            Write-Warning "Periksa penggunaan innerHTML:"
+            $hits | ForEach-Object { Write-Warning "  baris $($_.LineNumber): $($_.Line.Trim())" }
+          }
+
+      - name: Server dapat dijalankan
+        shell: pwsh
+        env:
+          FM_NO_OPEN: '1'
+          PORT: '59331'
+        run: |
+          $proc = Start-Process node -ArgumentList 'server.js' -PassThru -NoNewWindow
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) {
+            Start-Sleep -Milliseconds 500
+            try {
+              $r = Invoke-WebRequest -Uri 'http://127.0.0.1:59331/api/status' -UseBasicParsing -TimeoutSec 2
+              if ($r.StatusCode -eq 200) { $ok = $true; break }
+            } catch { }
+          }
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw 'Server tidak merespons /api/status' }
+          Write-Host 'Server OK'
