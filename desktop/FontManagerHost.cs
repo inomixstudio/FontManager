@@ -22,6 +22,7 @@ namespace FontManagerDesktop
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr handle, int command);
 
+        /// <summary>Cari instans lain yang punya jendela dan aktifkan.</summary>
         internal static bool ActivateExistingInstance()
         {
             Process current = Process.GetCurrentProcess();
@@ -29,15 +30,45 @@ namespace FontManagerDesktop
             {
                 try
                 {
-                    if (process.Id == current.Id || process.MainWindowHandle == IntPtr.Zero) continue;
-                    ShowWindow(process.MainWindowHandle, 9);
-                    SetForegroundWindow(process.MainWindowHandle);
+                    if (process.Id == current.Id) continue;
+                    IntPtr handle = process.MainWindowHandle;
+                    if (handle == IntPtr.Zero) continue;
+                    ShowWindow(handle, 9);
+                    SetForegroundWindow(handle);
                     return true;
                 }
                 catch { }
                 finally { process.Dispose(); }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Instans tanpa jendela yang sudah berjalan cukup lama dianggap macet
+        /// (mis. servernya mati atau inisialisasi gagal). Instans seperti itu
+        /// memegang mutex satu-instans sehingga peluncuran berikutnya tidak
+        /// pernah membuka jendela — bersihkan agar aplikasi bisa dijalankan lagi.
+        /// </summary>
+        internal static int TerminateStaleInstances(int minimumAgeSeconds)
+        {
+            Process current = Process.GetCurrentProcess();
+            int terminated = 0;
+            foreach (Process process in Process.GetProcessesByName(current.ProcessName))
+            {
+                try
+                {
+                    if (process.Id == current.Id) continue;
+                    if (process.MainWindowHandle != IntPtr.Zero) continue;
+                    double ageSeconds = (DateTime.Now - process.StartTime).TotalSeconds;
+                    if (ageSeconds < minimumAgeSeconds) continue;
+                    process.Kill();
+                    process.WaitForExit(3000);
+                    terminated++;
+                }
+                catch { }
+                finally { process.Dispose(); }
+            }
+            return terminated;
         }
     }
 
@@ -49,19 +80,89 @@ namespace FontManagerDesktop
             ServicePointManager.Expect100Continue = false;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            AppLog.AttachUnhandledHandlers();
 
-            bool isFirstInstance;
-            using (Mutex singleInstance = new Mutex(true, "FontManager.Desktop.SingleInstance", out isFirstInstance))
+            string url = args.Length == 0 ? null : args[0];
+
+            // Mutex satu-instans. Bila instans lain sudah ada, aktifkan jendelanya.
+            // Bila instans itu macet tanpa jendela (pernah terjadi setelah server
+            // mati mendadak), hentikan dan ambil alih agar aplikasi tidak pernah
+            // "tidak mau terbuka" lagi.
+            Mutex singleInstance = null;
+            bool ownsMutex = false;
+            for (int attempt = 0; attempt < 12 && !ownsMutex; attempt++)
             {
-                if (!isFirstInstance)
+                Mutex candidate = new Mutex(true, "FontManager.Desktop.SingleInstance", out ownsMutex);
+                if (ownsMutex)
                 {
-                    NativeWindowHelpers.ActivateExistingInstance();
+                    singleInstance = candidate;
+                    break;
+                }
+                candidate.Dispose();
+
+                // Beri kesempatan instans yang baru mulai untuk menampilkan jendela.
+                if (NativeWindowHelpers.ActivateExistingInstance())
+                {
                     return;
                 }
+                Thread.Sleep(400);
 
-                Application.Run(new MainForm(args.Length == 0 ? null : args[0]));
+                // Setelah ~2 detik tanpa jendela, anggap instans lain macet.
+                if (attempt >= 5 && NativeWindowHelpers.TerminateStaleInstances(2) > 0)
+                {
+                    Thread.Sleep(400);
+                }
+            }
+
+            if (!ownsMutex)
+            {
+                AppLog.Write("Tidak dapat memperoleh mutex satu-instans; keluar.");
+                return;
+            }
+
+            try
+            {
+                Application.Run(new MainForm(url));
+            }
+            catch (Exception error)
+            {
+                AppLog.Write("Kesalahan fatal: " + error);
+                MessageBox.Show(error.Message, "Font Manager tidak dapat dijalankan", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (singleInstance != null) singleInstance.ReleaseMutex();
                 GC.KeepAlive(singleInstance);
             }
+        }
+    }
+
+    /// <summary>Log sederhana agar kegagalan peluncuran bisa didiagnosis.</summary>
+    internal static class AppLog
+    {
+        internal static readonly string FilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FontManager",
+            "error.log");
+
+        internal static void Write(string message)
+        {
+            try
+            {
+                string directory = Path.GetDirectoryName(FilePath);
+                if (!String.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+                File.AppendAllText(
+                    FilePath,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + message + Environment.NewLine);
+            }
+            catch { }
+        }
+
+        internal static void AttachUnhandledHandlers()
+        {
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (sender, e) => Write("UI exception: " + e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) => Write("Unhandled: " + e.ExceptionObject);
         }
     }
 
@@ -138,9 +239,37 @@ namespace FontManagerDesktop
                 {
                     details += Environment.NewLine + Environment.NewLine + serverOutput;
                 }
+                AppLog.Write("Gagal menjalankan aplikasi: " + details);
                 MessageBox.Show(this, details, "Font Manager tidak dapat dijalankan", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Close();
             }
+        }
+
+        /// <summary>
+        /// Bila server lokal berhenti mendadak, jendela akan menampilkan halaman
+        /// kosong tanpa penjelasan. Tutup aplikasi dengan pesan jelas agar tidak
+        /// menyisakan instans tanpa jendela yang menghalangi peluncuran berikutnya.
+        /// </summary>
+        private void OnServerExited(object sender, EventArgs e)
+        {
+            if (IsDisposed) return;
+            try
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (IsDisposed) return;
+                    AppLog.Write("Server lokal berhenti mendadak." + Environment.NewLine + serverOutput);
+                    MessageBox.Show(
+                        this,
+                        "Server lokal berhenti. Jalankan Font Manager kembali." +
+                            (String.IsNullOrWhiteSpace(serverOutput) ? "" : Environment.NewLine + Environment.NewLine + serverOutput),
+                        "Font Manager berhenti",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    Close();
+                }));
+            }
+            catch { }
         }
 
         private void SetLoading(string message)
@@ -188,6 +317,8 @@ namespace FontManagerDesktop
             ownsServer = true;
             serverProcess.OutputDataReceived += CaptureServerOutput;
             serverProcess.ErrorDataReceived += CaptureServerOutput;
+            serverProcess.EnableRaisingEvents = true;
+            serverProcess.Exited += OnServerExited;
             serverProcess.BeginOutputReadLine();
             serverProcess.BeginErrorReadLine();
 
