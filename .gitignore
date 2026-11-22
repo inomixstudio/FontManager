@@ -1,0 +1,8 @@
+node_modules/
+data/
+*.log
+desktop/FontManager.exe
+desktop/Microsoft.Web.WebView2.Core.dll
+desktop/Microsoft.Web.WebView2.WinForms.dll
+desktop/WebView2Loader.dll
+AdobeFnt25.lst

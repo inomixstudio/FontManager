@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Font Manager — Windows</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Navigasi">
+      <div class="brand">
+        <div class="brand-mark"><img src="/favicon.svg" alt="" width="40" height="40" decoding="async" /></div>
+        <div class="brand-text">
+          <span class="brand-name">Font Manager</span>
+          <span class="brand-sub">Windows Font Explorer</span>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav-item is-active" data-view="all" title="Semua keluarga font">
+          <span class="nav-icon" data-icon="grid"></span>
+          <span class="nav-label">Semua keluarga</span>
+          <span class="nav-count" data-count="all">–</span>
+        </button>
+        <button class="nav-item" data-view="system" title="Keluarga font sistem">
+          <span class="nav-icon" data-icon="monitor"></span>
+          <span class="nav-label">Sistem</span>
+          <span class="nav-count" data-count="system">–</span>
+        </button>
+        <button class="nav-item" data-view="user" title="Keluarga font pengguna">
+          <span class="nav-icon" data-icon="user"></span>
+          <span class="nav-label">Pengguna</span>
+          <span class="nav-count" data-count="user">–</span>
+        </button>
+        <button class="nav-item is-hidden" data-view="custom" title="Keluarga font kustom">
+          <span class="nav-icon" data-icon="folder"></span>
+          <span class="nav-label">Kustom</span>
+          <span class="nav-count" data-count="custom">0</span>
+        </button>
+        <div class="nav-sep"></div>
+        <button class="nav-item" data-view="tracked" title="Font dilacak">
+          <span class="nav-icon" data-icon="star"></span>
+          <span class="nav-label">Dilacak</span>
+          <span class="nav-count" data-count="tracked">0</span>
+        </button>
+        <button class="nav-item" data-view="missing" title="Entri bermasalah">
+          <span class="nav-icon" data-icon="alert"></span>
+          <span class="nav-label">Entri bermasalah</span>
+          <span class="nav-count" data-count="missing">0</span>
+        </button>
+        <button class="nav-item" data-view="backups" title="Cadangan font">
+          <span class="nav-icon" data-icon="archive"></span>
+          <span class="nav-label">Cadangan</span>
+          <span class="nav-count" data-count="backups">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-note" id="scanNote">Menyiapkan pemindaian…</div>
+
+      <div class="stats">
+        <div class="stat-hero">
+          <span id="statTotal">–</span>
+          <em>keluarga font</em>
+        </div>
+        <div class="stat-grid">
+          <div><span>Berkas</span><b id="statFiles">–</b></div>
+          <div><span>Sistem</span><b id="statSystem">–</b></div>
+          <div><span>Pengguna</span><b id="statUser">–</b></div>
+          <div><span>Ukuran</span><b id="statSize">–</b></div>
+          <div><span>Dilacak</span><b id="statTracked">0</b></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="toolbar">
+        <div class="search">
+          <span class="search-icon" data-icon="search"></span>
+          <input id="searchInput" type="search" placeholder="Cari keluarga, gaya, atau berkas…" autocomplete="off" spellcheck="false" aria-label="Cari font" />
+          <kbd>/</kbd>
+        </div>
+
+        <label class="control control-sample">
+          <span>Teks pratinjau</span>
+          <input id="sampleInput" type="text" value="" placeholder="Nama font" title="Kosongkan untuk memakai nama font" maxlength="120" autocomplete="off" spellcheck="false" />
+        </label>
+
+        <label class="control control-size">
+          <span>Ukuran <b id="sizeValue">34</b>px</span>
+          <input id="sizeInput" type="range" min="14" max="76" step="1" value="34" />
+        </label>
+
+        <label class="control control-sort">
+          <span>Urutkan</span>
+          <select id="sortSelect">
+            <option value="family">Nama font</option>
+            <option value="size">Ukuran terbesar</option>
+            <option value="recent">Terbaru diubah</option>
+            <option value="weight">Ketebalan</option>
+          </select>
+        </label>
+
+        <div class="tool-actions">
+          <button id="selectBtn" class="btn ghost" title="Pilih beberapa keluarga font untuk dihapus">
+            <span class="btn-icon" data-icon="select"></span>
+            <span class="btn-label">Pilih</span>
+          </button>
+          <button id="refreshBtn" class="btn ghost" title="Pindai ulang semua font">
+            <span class="btn-icon" data-icon="refresh"></span>
+            <span class="btn-label">Pindai</span>
+          </button>
+          <button id="installBtn" class="btn primary" title="Pasang berkas font baru">
+            <span class="btn-icon" data-icon="plus"></span>
+            <span class="btn-label">Tambah font</span>
+          </button>
+          <input id="fileInput" type="file" multiple accept=".ttf,.otf,.ttc,.otc" hidden />
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="content-head">
+          <div class="content-title">
+            <h1 id="viewTitle">Semua font</h1>
+            <p id="viewSub">Seluruh berkas font yang terdeteksi di Windows</p>
+          </div>
+          <div class="content-meta" id="viewInfo">Memindai…</div>
+        </div>
+
+        <div class="grid" id="grid" aria-live="polite"></div>
+        <div class="sentinel" id="sentinel" hidden>
+          <button class="btn ghost" id="loadMoreBtn" type="button">Muat lebih banyak</button>
+        </div>
+
+        <div class="empty" id="emptyState" hidden>
+          <div class="empty-icon" data-icon="search"></div>
+          <h2 id="emptyTitle">Tidak ada font</h2>
+          <p id="emptyText">Coba kata kunci lain atau ubah filter.</p>
+          <button class="btn primary" id="emptyAction" hidden></button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="selection-bar" id="selectionBar" hidden>
+    <div class="selection-summary">
+      <span class="selection-mark" data-icon="select"></span>
+      <div>
+        <strong id="selectionCount" aria-live="polite">0 keluarga</strong>
+        <span id="selectionMeta">Pilih keluarga yang akan dihapus</span>
+      </div>
+    </div>
+    <div class="selection-actions">
+      <button id="selectVisibleBtn" class="btn ghost" type="button">Pilih tampil</button>
+      <button id="selectAllBtn" class="btn ghost" type="button">Pilih semua hasil</button>
+      <button id="clearSelectionBtn" class="btn ghost" type="button" disabled>Kosongkan</button>
+      <button id="deleteSelectedBtn" class="btn danger" type="button" disabled>Hapus terpilih</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="drawerOverlay" hidden></div>
+  <aside class="drawer" id="drawer" aria-label="Detail font" hidden></aside>
+  <div class="modal-root" id="modalRoot" hidden></div>
+  <div class="toasts" id="toasts"></div>
+
+  <div class="task-root" id="taskRoot" hidden>
+    <div class="task-backdrop">
+      <div class="task-card" role="dialog" aria-labelledby="taskTitle" aria-describedby="taskSub">
+        <div class="task-head">
+          <div class="task-badge" id="taskBadge" aria-hidden="true"></div>
+          <div class="task-headings">
+            <h2 id="taskTitle">Memproses font</h2>
+            <p id="taskSub">Menyiapkan…</p>
+          </div>
+        </div>
+        <div class="task-bar" id="taskBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Progres operasi">
+          <div class="task-bar-fill" id="taskBarFill"></div>
+        </div>
+        <div class="task-stats">
+          <span id="taskPercent">0%</span>
+          <span id="taskCounter"></span>
+        </div>
+        <div class="task-list" id="taskList" role="list" aria-live="off"></div>
+        <div class="task-foot">
+          <span class="task-hint" id="taskHint"></span>
+          <button class="btn ghost" id="taskHide" type="button">Sembunyikan</button>
+          <button class="btn ghost" id="taskClose" type="button" hidden>Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drop-overlay" id="dropOverlay" hidden>
+    <div class="drop-box">
+      <div class="drop-icon" data-icon="upload"></div>
+      <h2>Lepaskan untuk memasang font</h2>
+      <p>Berkas .ttf, .otf, .ttc, dan .otc akan dipasang untuk akun Anda.</p>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

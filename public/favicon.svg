@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Font Manager">
+  <defs>
+    <linearGradient id="fmMark" x1="14" y1="12" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9fb0ff"/>
+      <stop offset="0.48" stop-color="#bd8cff"/>
+      <stop offset="1" stop-color="#f77cc4"/>
+    </linearGradient>
+    <linearGradient id="fmBase" x1="20" y1="0" x2="45" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9fb0ff" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#f77cc4" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="fmEdge" x1="10" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b6c2ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#f77cc4" stop-opacity="0.22"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.2" y="1.2" width="61.6" height="61.6" rx="15.2" fill="#0b0e15"/>
+  <rect x="1.2" y="1.2" width="61.6" height="61.6" rx="15.2" fill="url(#fmMark)" opacity="0.09"/>
+  <rect x="1.9" y="1.9" width="60.2" height="60.2" rx="14.6" fill="none" stroke="url(#fmEdge)" stroke-width="1.5"/>
+  <path d="M31.9 16.4 L19.9 45.8" fill="none" stroke="url(#fmMark)" stroke-width="8.2" stroke-linecap="round"/>
+  <path d="M31.9 16.4 L43.9 45.8" fill="none" stroke="url(#fmMark)" stroke-width="4.6" stroke-linecap="round"/>
+  <path d="M24.2 35.6 H39.4" fill="none" stroke="url(#fmMark)" stroke-width="4.2" stroke-linecap="round"/>
+  <rect x="19.9" y="51.4" width="24.2" height="2.5" rx="1.25" fill="url(#fmBase)"/>
+  <rect x="19.9" y="56.3" width="13.4" height="2.1" rx="1.05" fill="url(#fmBase)" opacity="0.42"/>
+</svg>
