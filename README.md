@@ -206,7 +206,7 @@ Celah keamanan **jangan** dilaporkan lewat issue publik — lihat [SECURITY.md](
 ## Berkontribusi
 
 Saran, laporan bug, dan pull request diterima. Lihat [CONTRIBUTING.md](CONTRIBUTING.md) dan
-[CHANGELOG.md](CHANGELOG.md).
+[CHANGELOG.md](CHANGELOG.md). Partisipasi tunduk pada [Kode Etik](CODE_OF_CONDUCT.md).
 
 ## Lisensi
 
