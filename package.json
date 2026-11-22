@@ -1,6 +1,6 @@
 {
   "name": "font-manager",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Font Manager lokal untuk Windows: deteksi, pratinjau, lacak, pasang, dan hapus font terinstal.",
   "main": "server.js",
