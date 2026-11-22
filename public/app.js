@@ -9,6 +9,8 @@ const ICONS = {
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   folder:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>',
+  adobe:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 3.5 20.5h5.2l1.1-2.6h4.4l1.1 2.6h5.2L12 3.5Z"/><path d="M9.3 13.2h5.4L12 7.2Z"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L3.6 9.8l6.5-.9Z"/></svg>',
   alert:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m10.3 3.6-8 14A2 2 0 0 0 4 20.6h16a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
@@ -145,7 +147,7 @@ function isTypingTarget(target) {
 
 /* ---------------------------------------------------------------- status */
 
-const SOURCE_LABELS = { system: 'Sistem', user: 'Pengguna', custom: 'Kustom' };
+const SOURCE_LABELS = { system: 'Sistem', user: 'Pengguna', custom: 'Kustom', adobe: 'Adobe Fonts' };
 const VIEWS = {
   all: {
     title: 'Semua keluarga font',
@@ -1160,11 +1162,12 @@ function refreshFamilyTracking(group) {
 }
 
 function familyCounts() {
-  const counts = { all: state.families.length, system: 0, user: 0, custom: 0, tracked: 0, missing: 0 };
+  const counts = { all: state.families.length, system: 0, user: 0, custom: 0, adobe: 0, tracked: 0, missing: 0 };
   for (const group of state.families) {
     if (group.sources.has('system')) counts.system++;
     if (group.sources.has('user')) counts.user++;
     if (group.sources.has('custom')) counts.custom++;
+    if (group.sources.has('adobe')) counts.adobe++;
     if (group.anyTracked) counts.tracked++;
     if (group.hasMissing || group.hasOrphan) counts.missing++;
   }
@@ -1775,6 +1778,7 @@ function matchesView(group, view) {
   if (view === 'system') return group.sources.has('system');
   if (view === 'user') return group.sources.has('user');
   if (view === 'custom') return group.sources.has('custom');
+  if (view === 'adobe') return group.sources.has('adobe');
   if (view === 'tracked') return group.anyTracked;
   if (view === 'missing') return group.hasMissing || group.hasOrphan;
   return true;
@@ -1892,6 +1896,15 @@ function renderEmpty() {
   }
   if (state.view === 'custom') {
     showEmpty('Tidak ada font kustom', 'Font di luar folder font Windows akan muncul di sini.', null, null);
+    return;
+  }
+  if (state.view === 'adobe') {
+    showEmpty(
+      'Tidak ada font Adobe',
+      'Font langganan Adobe Fonts yang aktif di Creative Cloud akan muncul di sini.',
+      null,
+      null
+    );
     return;
   }
   if (state.view === 'system' || state.view === 'user') {
@@ -2188,7 +2201,7 @@ function createCard(group) {
   );
 
   const chips = el('div', { class: 'chips' });
-  for (const source of ['system', 'user', 'custom']) {
+  for (const source of ['system', 'user', 'custom', 'adobe']) {
     if (group.sources.has(source)) chips.append(el('span', { class: `chip ${source}` }, SOURCE_LABELS[source]));
   }
   if (group.files.length > 1) chips.append(el('span', { class: 'chip' }, `${group.files.length} berkas`));
@@ -2351,7 +2364,7 @@ function buildFamilyDrawer(group) {
   const missingCount = files.filter((font) => !font.exists).length;
 
   const eyebrow = el('div', { class: 'drawer-eyebrow' });
-  for (const source of ['system', 'user', 'custom']) {
+  for (const source of ['system', 'user', 'custom', 'adobe']) {
     if (group.sources.has(source)) eyebrow.append(el('span', { class: `chip ${source}` }, SOURCE_LABELS[source]));
   }
   for (const format of group.formats) eyebrow.append(el('span', { class: 'chip' }, format));
@@ -2731,6 +2744,20 @@ function buildDrawer(font, loading, options = {}) {
       )
     );
   }
+  if (font.source === 'adobe') {
+    body.append(
+      el(
+        'div',
+        { class: 'notice' },
+        icon('alert'),
+        el(
+          'div',
+          {},
+          'Font langganan Adobe Fonts. Menghapus berkas ini mencabut aktivasi lokalnya; aktivasi kembali lewat aplikasi Creative Cloud.'
+        )
+      )
+    );
+  }
   if (!font.exists) {
     body.append(
       el(
@@ -2763,6 +2790,22 @@ function buildDrawer(font, loading, options = {}) {
   if (font.isVariable) infoRows.push(['Variabel', 'Ya — mendukung beberapa ketebalan']);
   if (font.isCollection) infoRows.push(['Wajah dalam koleksi', `${font.collectionCount} wajah`]);
   if (font.psName) infoRows.push(['Nama PostScript', font.psName]);
+  if (font.adobeUrl) {
+    infoRows.push([
+      'Tautan',
+      el(
+        'a',
+        {
+          class: 'adobe-link',
+          href: font.adobeUrl,
+          target: '_blank',
+          rel: 'noreferrer noopener',
+          onclick: (event) => event.stopPropagation()
+        },
+        'Lihat di fonts.adobe.com'
+      )
+    ]);
+  }
 
   const info = el('div', { class: 'drawer-section' }, el('h4', {}, 'Informasi font'));
   const dl = el('dl', { class: 'kv' });
@@ -4311,12 +4354,15 @@ function updateNavCounts() {
   setCount('system', counts.system);
   setCount('user', counts.user);
   setCount('custom', counts.custom);
+  setCount('adobe', counts.adobe);
   setCount('tracked', counts.tracked);
   setCount('missing', counts.missing);
   setCount('backups', state.backups.length);
 
   const customItem = $('.nav-item[data-view="custom"]', els.nav);
   if (customItem) customItem.classList.toggle('is-hidden', !counts.custom);
+  const adobeItem = $('.nav-item[data-view="adobe"]', els.nav);
+  if (adobeItem) adobeItem.classList.toggle('is-hidden', !counts.adobe);
 }
 
 function setCount(view, value) {

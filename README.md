@@ -23,7 +23,7 @@ ekstensi browser dinonaktifkan; UI tetap ringan tanpa mengemas browser penuh.
   dan menampilkan nama font itu sendiri. Teks kustom tetap bisa diisi lewat
   kolom **Teks pratinjau** (kosongkan untuk kembali ke nama font).
 - **Pencarian & filter** — cari berdasarkan nama keluarga, nama berkas, atau
-  gaya; filter Semua / Sistem / Pengguna / Kustom.
+  gaya; filter Semua / Sistem / Pengguna / Kustom / Adobe.
 - **Detail font** — nama lengkap, PostScript, berat, hak sematan, wajah di dalam
   koleksi (TTC/OTC), entri registri, lokasi berkas, dan tombol buka Explorer.
 - **Font dilacak** — tandai seluruh keluarga dengan satu klik bintang; semua
@@ -36,6 +36,13 @@ ekstensi browser dinonaktifkan; UI tetap ringan tanpa mengemas browser penuh.
   **Hapus terpilih**. Semua pilihan diproses dalam satu operasi (satu UAC bila
   ada font sistem), dengan cadangan otomatis. Maksimal 2.000 berkas per
   operasi; **Pilih semua hasil** melewati font inti sistem secara otomatis.
+- **Dukungan Adobe Fonts** — font langganan Adobe Fonts yang aktif di
+  Creative Cloud terdeteksi otomatis dari folder sinkronisasi CoreSync,
+  lengkap dengan tautan ke fonts.adobe.com. Dapat dilacak, dicadangkan, dan
+  dihapus; penghapusan ikut mencabut entri entitlement agar Creative Cloud
+  tidak mengunduhnya kembali, dan pemulihan dari cadangan mendaftarkannya
+  kembali. Untuk berhenti berlangganan sebuah keluarga secara permanen,
+  tetap gunakan aplikasi Creative Cloud.
 - **Cadangan & pemulihan** — setiap penghapusan mencadangkan berkas lebih dulu
   ke `data/backups`; pulihkan kapan saja dari tab **Cadangan**.
 - **Tambah font** — pasang berkas `.ttf`, `.otf`, `.ttc`, atau `.otc` untuk akun
@@ -126,6 +133,8 @@ Folder `data/` dibuat otomatis dan tidak perlu di-commit.
   dibersihkan entri registrinya.
 - Server hanya mendengarkan `127.0.0.1` dan menolak permintaan lintas asal
   (CSRF), sehingga aplikasi web lain tidak dapat memicu penghapusan font.
+- Font Adobe yang dihapus tetap milik langganan Anda; aktifkan kembali
+  kapan saja dari aplikasi Creative Cloud atau dari tab **Cadangan**.
 
 ## Struktur
 
@@ -136,6 +145,7 @@ desktop/make-icon.ps1   Pembuat ikon aplikasi (app.ico) dari geometri logo
 lib/fontParser.js      Pembaca tabel sfnt (name, OS/2, head, TTC)
 lib/registry.js        Pembacaan registri font Windows
 lib/scanner.js         Pemindaian folder + registri, cache metadata
+lib/adobeFonts.js      Dukungan font langganan Adobe Fonts (CoreSync)
 lib/manage.js          Hapus/pasang/pulihkan + skrip PowerShell & UAC
 lib/store.js           Penyimpanan lacak & cadangan
 public/                Antarmuka (HTML, CSS, JS)

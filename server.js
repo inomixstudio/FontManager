@@ -9,6 +9,7 @@ const { exec } = require('child_process');
 const scanner = require('./lib/scanner');
 const store = require('./lib/store');
 const manage = require('./lib/manage');
+const adobe = require('./lib/adobeFonts');
 
 const HOST = '127.0.0.1';
 const START_PORT = Number(process.env.PORT || 4317);
@@ -113,6 +114,8 @@ function summarizeFont(font) {
     registered: font.registered,
     orphan: font.orphan,
     parserOk: font.parserOk,
+    adobeUrl: font.adobeUrl || '',
+    adobeState: font.adobeState || '',
     tracked: !!font.tracked
   };
 }
@@ -273,6 +276,61 @@ async function fontsPayload(force) {
   };
 }
 
+/*
+ * Daftar font berukuran besar (bisa melebihi 6 MB); kompresi gzip per
+ * permintaan memakan CPU tanpa perlu. Cache hasil serialisasi + gzip per
+ * generasi pindai (versi pindai + jumlah font dilacak berubah saat data
+ * berubah), sehingga permintaan ulang cukup mengirim ulang buffer.
+ */
+const payloadCache = { key: '', json: '', gz: null };
+
+function fontsCacheKey(payload) {
+  return `${scanner.currentScanVersion()}:${payload.stats.tracked}:${payload.fonts.length}`;
+}
+
+function sendFontsPayload(res, status, payload) {
+  const key = fontsCacheKey(payload);
+  if (payloadCache.key !== key) {
+    payloadCache.key = key;
+    payloadCache.json = JSON.stringify(payload);
+    payloadCache.gz = null;
+  }
+
+  const req = res.req;
+  const acceptsGzip = req && /\bgzip\b/i.test(String(req.headers['accept-encoding'] || ''));
+
+  if (acceptsGzip) {
+    if (!payloadCache.gz) {
+      try {
+        payloadCache.gz = zlib.gzipSync(Buffer.from(payloadCache.json, 'utf8'), { level: 6 });
+      } catch {
+        payloadCache.gz = null;
+      }
+    }
+    if (payloadCache.gz) {
+      res.writeHead(status, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': payloadCache.gz.length,
+        'Content-Encoding': 'gzip',
+        Vary: 'Accept-Encoding',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      res.end(payloadCache.gz);
+      return;
+    }
+  }
+
+  const body = Buffer.from(payloadCache.json, 'utf8');
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': body.length,
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff'
+  });
+  res.end(body);
+}
+
 async function handleApi(req, res, url, pathname) {
   assertRequest(req);
 
@@ -285,7 +343,7 @@ async function handleApi(req, res, url, pathname) {
       ok: true,
       platform: process.platform,
       port: activePort,
-      dirs: { system: scanner.systemFontsDir(), user: scanner.userFontsDir() },
+      dirs: { system: scanner.systemFontsDir(), user: scanner.userFontsDir(), adobe: adobe.livetypeDir() },
       dataDir: store.DATA_DIR
     });
     return;
@@ -301,7 +359,7 @@ async function handleApi(req, res, url, pathname) {
     if (parts.length === 2) {
       if (req.method !== 'GET') throw fail(405, 'Metode tidak didukung.');
       const force = url.searchParams.get('refresh') === '1';
-      sendJson(res, 200, await fontsPayload(force));
+      sendFontsPayload(res, 200, await fontsPayload(force));
       return;
     }
 
@@ -465,7 +523,7 @@ async function handleApi(req, res, url, pathname) {
   if (resource === 'scan' && parts.length === 2) {
     if (req.method !== 'POST') throw fail(405, 'Metode tidak didukung.');
     scanner.invalidateScan();
-    sendJson(res, 200, await fontsPayload(true));
+    sendFontsPayload(res, 200, await fontsPayload(true));
     return;
   }
 
