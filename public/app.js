@@ -147,7 +147,13 @@ function isTypingTarget(target) {
 
 /* ---------------------------------------------------------------- status */
 
-const SOURCE_LABELS = { system: 'Sistem', user: 'Pengguna', custom: 'Kustom', adobe: 'Adobe Fonts' };
+const SOURCE_LABELS = {
+  system: 'Sistem',
+  user: 'Pengguna',
+  custom: 'Kustom',
+  adobe: 'Adobe Fonts',
+  tracked: 'Tidak terdeteksi'
+};
 const VIEWS = {
   all: {
     title: 'Semua keluarga font',
@@ -164,6 +170,10 @@ const VIEWS = {
   custom: {
     title: 'Font kustom',
     sub: 'Keluarga font dari folder tambahan di luar folder font Windows'
+  },
+  adobe: {
+    title: 'Font Adobe',
+    sub: 'Font langganan Adobe Fonts yang aktif di Creative Cloud'
   },
   tracked: {
     title: 'Dilacak',
@@ -1092,9 +1102,12 @@ function finalizeFamily(group) {
   group.formats = new Set(group.files.map((font) => font.format).filter(Boolean));
   group.anyTracked = group.files.some((font) => state.tracked.has(font.id));
   group.allTracked = group.files.length > 0 && group.files.every((font) => state.tracked.has(font.id));
-  group.hasMissing = group.files.some((font) => !font.exists);
+  group.hasMissing = group.files.some((font) => !font.exists && !font.trackedOnly);
   group.hasProtected = group.files.some((font) => font.protected);
-  group.hasOrphan = group.files.some((font) => font.exists && !font.registered);
+  group.hasOrphan = group.files.some(
+    (font) => font.exists && !font.registered && font.source !== 'adobe' && font.source !== 'tracked'
+  );
+  group.hasTrackedOnly = group.files.some((font) => font.trackedOnly);
   group.hasVariable = group.files.some((font) => font.isVariable);
   group.hasPreviewable = group.files.some((font) => font.previewable && font.exists);
   group.hasCollection = group.files.some((font) => font.isCollection);
@@ -2191,7 +2204,7 @@ function createCard(group) {
     info.append(el('p', { class: 'card-styles', title: styleSummary(group) }, styleSummary(group)));
   }
 
-  const missingCount = group.files.filter((font) => !font.exists).length;
+  const missingCount = group.files.filter((font) => !font.exists && !font.trackedOnly).length;
   info.append(
     el(
       'p',
@@ -2204,6 +2217,8 @@ function createCard(group) {
   for (const source of ['system', 'user', 'custom', 'adobe']) {
     if (group.sources.has(source)) chips.append(el('span', { class: `chip ${source}` }, SOURCE_LABELS[source]));
   }
+  const untracked = group.files.filter((font) => font.trackedOnly).length;
+  if (untracked) chips.append(el('span', { class: 'chip warn' }, `${untracked} tidak terdeteksi`));
   if (group.files.length > 1) chips.append(el('span', { class: 'chip' }, `${group.files.length} berkas`));
   if (group.totalSize) chips.append(el('span', { class: 'chip' }, fmtBytes(group.totalSize)));
   if (group.hasVariable) chips.append(el('span', { class: 'chip var' }, 'Variabel'));
@@ -2232,7 +2247,24 @@ function createCard(group) {
     confirmDeleteFamily(group);
   });
 
-  info.append(el('div', { class: 'card-actions' }, detailBtn, revealBtn, deleteBtn));
+  // Keluarga yang seluruh berkasnya tidak terdeteksi tidak punya apa pun
+  // untuk dihapus; arahkan pengguna menghentikan pelacakan saja.
+  const onlyTracked = group.files.every((font) => font.trackedOnly);
+  if (onlyTracked) {
+    deleteBtn.disabled = true;
+    deleteBtn.title = 'Berkas tidak terdeteksi — hentikan pelacakan dari kartu ini';
+  }
+  const untrackBtn = onlyTracked
+    ? el('button', { class: 'btn-mini', type: 'button', title: 'Hentikan pelacakan keluarga ini' }, icon('star'), 'Lepas')
+    : null;
+  if (untrackBtn) {
+    untrackBtn.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      await toggleFamilyTrack(group);
+    });
+  }
+
+  info.append(el('div', { class: 'card-actions' }, detailBtn, revealBtn, deleteBtn, untrackBtn));
   card.append(preview, info);
 
   if (primary.previewable && primary.exists) {
@@ -2361,7 +2393,7 @@ function openFamilyDrawer(group) {
 function buildFamilyDrawer(group) {
   const files = group.files;
   const previewables = files.filter((font) => font.exists && font.previewable);
-  const missingCount = files.filter((font) => !font.exists).length;
+  const missingCount = files.filter((font) => !font.exists && !font.trackedOnly).length;
 
   const eyebrow = el('div', { class: 'drawer-eyebrow' });
   for (const source of ['system', 'user', 'custom', 'adobe']) {
@@ -2489,8 +2521,27 @@ function buildFamilyDrawer(group) {
     ['Total ukuran', fmtBytes(group.totalSize)],
     ['Sumber', Array.from(group.sources).map((source) => SOURCE_LABELS[source] || source).join(' + ')],
     ['Format', Array.from(group.formats).join(', ') || '—'],
-    ['Status', allMissing ? 'Semua berkas hilang' : missingCount ? `${missingCount} berkas hilang` : 'Semua berkas tersedia']
+    [
+      'Status',
+      allMissing
+        ? 'Semua berkas hilang'
+        : missingCount
+          ? `${missingCount} berkas hilang`
+          : 'Semua berkas tersedia'
+    ]
   ];
+
+  const adobeUrl = (group.files.find((font) => font.adobeUrl) || {}).adobeUrl;
+  if (adobeUrl) {
+    infoRows.push([
+      'Tautan',
+      el(
+        'a',
+        { class: 'adobe-link', href: adobeUrl, target: '_blank', rel: 'noreferrer noopener', onclick: (event) => event.stopPropagation() },
+        'Lihat di fonts.adobe.com'
+      )
+    ]);
+  }
 
   const info = el('div', { class: 'drawer-section' }, el('h4', {}, 'Informasi keluarga'));
   const dl = el('dl', { class: 'kv' });
@@ -2780,11 +2831,15 @@ function buildDrawer(font, loading, options = {}) {
     ['Hak sematan', font.embedding || 'Tidak diketahui'],
     [
       'Status',
-      font.exists
-        ? font.registered
-          ? 'Terdaftar di registri'
-          : 'Tidak terdaftar'
-        : 'Berkas hilang'
+      font.trackedOnly
+        ? 'Tidak terdeteksi saat pindai terakhir'
+        : font.exists
+          ? font.source === 'adobe'
+            ? 'Aktif via Adobe Creative Cloud'
+            : font.registered
+              ? 'Terdaftar di registri'
+              : 'Tidak terdaftar'
+          : 'Berkas hilang'
     ]
   ];
   if (font.isVariable) infoRows.push(['Variabel', 'Ya — mendukung beberapa ketebalan']);
@@ -4226,6 +4281,59 @@ async function deleteBackup(item) {
 
 /* ------------------------------------------------------------- pemindaian */
 
+function appendUndetectedTracked(fonts, trackedMeta, fontById) {
+  /*
+   * Font yang dilacak tetapi tidak lagi muncul di hasil pindai (berkas
+   * dipindah/dihapus, sinkron Adobe berubah, atau ID lama) dulu hilang
+   * begitu saja dari tab Dilacak. Tambahkan sebagai entri sintetis agar
+   * keluarga yang dilacak tetap utuh dan bisa dihentikan pelacakannya.
+   */
+  for (const [id, meta] of Object.entries(trackedMeta || {})) {
+    if (fontById.has(id)) continue;
+    const family = (meta && meta.family) || (meta && meta.fileName) || 'Font tanpa nama';
+    const subfamily = (meta && meta.subfamily) || '';
+    const font = {
+      id,
+      fileName: (meta && meta.fileName) || family,
+      filePath: (meta && meta.filePath) || '',
+      dir: '',
+      family,
+      subfamily,
+      fullName: [family, subfamily].filter(Boolean).join(' '),
+      psName: '',
+      faces: [],
+      families: [family],
+      format: '',
+      type: '',
+      weightClass: 400,
+      weightName: 'Regular',
+      embedding: 'Tidak diketahui',
+      fsType: 0,
+      isVariable: false,
+      isCollection: false,
+      familyFromFileName: false,
+      collectionCount: 0,
+      isItalic: false,
+      parserOk: false,
+      size: 0,
+      mtime: 0,
+      modifiedAt: null,
+      exists: false,
+      previewable: false,
+      source: 'tracked',
+      sourceLabel: SOURCE_LABELS.tracked,
+      protected: false,
+      registered: false,
+      registry: [],
+      tracked: true,
+      trackedOnly: true,
+      orphan: false
+    };
+    fonts.push(font);
+    fontById.set(id, font);
+  }
+}
+
 async function loadFonts(force = false) {
   closeDrawer();
   setBusy(true);
@@ -4241,6 +4349,7 @@ async function loadFonts(force = false) {
     state.stats = (data && data.stats) || null;
     state.trackedMeta = (data && data.tracked) || {};
     state.tracked = new Set(Object.keys(state.trackedMeta));
+    appendUndetectedTracked(state.fonts, state.trackedMeta, state.fontById);
     state.warnings = (data && data.warnings) || [];
     state.scannedAt = (data && data.scannedAt) || null;
     state.fontsVersion++;

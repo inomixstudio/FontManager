@@ -42,7 +42,12 @@ ekstensi browser dinonaktifkan; UI tetap ringan tanpa mengemas browser penuh.
   dihapus; penghapusan ikut mencabut entri entitlement agar Creative Cloud
   tidak mengunduhnya kembali, dan pemulihan dari cadangan mendaftarkannya
   kembali. Untuk berhenti berlangganan sebuah keluarga secara permanen,
-  tetap gunakan aplikasi Creative Cloud.
+  tetap gunakan aplikasi Creative Cloud. ID font Adobe memakai id sinkronisasi
+  (bukan path), sehingga pelacakan tetap utuh meski Creative Cloud memindahkan
+  berkasnya antar subfolder.
+- **Pelacakan tidak pernah hilang** — keluarga yang dilacak tetap tampil di tab
+  **Dilacak** walau berkasnya sedang tidak terdeteksi (dipindah/dihapus), dengan
+  chip **tidak terdeteksi** dan tombol **Lepas** untuk menghentikan pelacakan.
 - **Cadangan & pemulihan** — setiap penghapusan mencadangkan berkas lebih dulu
   ke `data/backups`; pulihkan kapan saja dari tab **Cadangan**.
 - **Tambah font** — pasang berkas `.ttf`, `.otf`, `.ttc`, atau `.otc` untuk akun

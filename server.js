@@ -93,6 +93,7 @@ function summarizeFont(font) {
   return {
     id: font.id,
     fileName: font.fileName,
+    filePath: font.filePath,
     family: font.family,
     subfamily: font.subfamily,
     fullName: font.fullName,
@@ -255,9 +256,29 @@ function serveFontFile(req, res, font) {
   fs.createReadStream(font.filePath).pipe(res);
 }
 
+/**
+ * Metadata untuk entri lacak. Server lebih tahu daripada klien: ambil dari
+ * cache pindai bila font dikenal, sehingga path/berkas tidak pernah kosong.
+ */
+function trackMetaFor(id, fallback = {}) {
+  const font = scanner.findFontSync(id);
+  const pick = (key) => {
+    const fromFont = font && typeof font[key] === 'string' ? font[key] : '';
+    if (fromFont) return fromFont;
+    const value = fallback && fallback[key];
+    return typeof value === 'string' ? value : '';
+  };
+  return {
+    family: pick('family'),
+    subfamily: pick('subfamily'),
+    fileName: pick('fileName'),
+    filePath: pick('filePath')
+  };
+}
+
 async function fontsPayload(force) {
   const data = await scanner.scanFonts({ force });
-  const tracked = store.trackedMap();
+  const tracked = migrateAdobeTracked(store.trackedMap());
   const fonts = data.fonts.map((font) => {
     font.tracked = !!tracked[font.id];
     return summarizeFont(font);
@@ -274,6 +295,93 @@ async function fontsPayload(force) {
     dirs: data.dirs,
     platform: data.platform
   };
+}
+
+/**
+ * Entri lacak font Adobe versi lama memakai ID berbasis path (hash sha1).
+ * Saat Creative Cloud memindahkan berkas ke subfolder lain, ID itu tidak
+ * lagi cocok dan font hilang dari tab Dilacak. Pindahkan ke ID stabil
+ * (adobe-<id sinkronisasi>) sekali saja.
+ */
+function migrateAdobeTracked(tracked) {
+  if (!tracked || typeof tracked !== 'object') return tracked || {};
+  let livetype = '';
+  try {
+    livetype = path.resolve(adobe.livetypeDir()).toLowerCase();
+  } catch {
+    return tracked;
+  }
+
+  let changed = false;
+  const stableIds = new Set();
+  for (const [id, meta] of Object.entries(tracked)) {
+    if (String(id).startsWith('adobe-')) stableIds.add(id);
+  }
+
+  for (const [id, meta] of Object.entries(tracked)) {
+    const raw = String((meta && meta.filePath) || '');
+    let stable = '';
+    if (raw) {
+      let resolved;
+      try {
+        resolved = path.resolve(raw).toLowerCase();
+      } catch {
+        resolved = '';
+      }
+      if (resolved && resolved.startsWith(livetype)) {
+        const base = path.basename(resolved);
+        if (/^\d+$/.test(base)) stable = adobe.stableId(base);
+      }
+    }
+
+    // Tanpa path (entri lacak lama), kenali lewat nama berkas/keluarga dari
+    // hasil pindai: font Adobe adalah satu-satunya yang tidak terdaftar di
+    // registri Windows namun cocok dengan entri lacak.
+    if (!stable) {
+      const candidates = findAdobeIdsFor(meta);
+      if (candidates.length === 1) stable = candidates[0];
+    }
+
+    if (!stable || stable === id) continue;
+    if (stableIds.has(stable)) {
+      delete tracked[id];
+      changed = true;
+      continue;
+    }
+    delete tracked[id];
+    tracked[stable] = { ...meta, id: stable };
+    stableIds.add(stable);
+    changed = true;
+  }
+
+  if (changed) {
+    try {
+      store.replaceTracked(tracked);
+    } catch {
+      /* abaikan: pelacakan tetap berfungsi untuk sesi ini */
+    }
+  }
+  return tracked;
+}
+
+/** Cari id stabil Adobe yang cocok dengan metadata entri lacak. */
+function findAdobeIdsFor(meta) {
+  if (!meta) return [];
+  const wantFile = String(meta.fileName || '').trim().toLowerCase();
+  const wantFamily = String(meta.family || '').trim().toLowerCase();
+  const wantStyle = String(meta.subfamily || '').trim().toLowerCase();
+  const matches = [];
+
+  const data = scanner.currentFonts ? scanner.currentFonts() : null;
+  const fonts = data || [];
+  for (const font of fonts) {
+    if (font.source !== adobe.SOURCE) continue;
+    if (wantFile && String(font.fileName).toLowerCase() !== wantFile) continue;
+    if (wantFamily && String(font.family).toLowerCase() !== wantFamily) continue;
+    if (wantStyle && String(font.subfamily).toLowerCase() !== wantStyle) continue;
+    matches.push(font.id);
+  }
+  return matches;
 }
 
 /*
@@ -381,18 +489,7 @@ async function handleApi(req, res, url, pathname) {
 
       const items = ids.map((id) => {
         const meta = provided.get(id);
-        if (meta) {
-          return {
-            id,
-            meta: {
-              family: typeof meta.family === 'string' ? meta.family : '',
-              subfamily: typeof meta.subfamily === 'string' ? meta.subfamily : '',
-              fileName: typeof meta.fileName === 'string' ? meta.fileName : '',
-              filePath: typeof meta.filePath === 'string' ? meta.filePath : ''
-            }
-          };
-        }
-        return { id, meta: {} };
+        return { id, meta: trackMetaFor(id, meta || {}) };
       });
       const result = store.setTrackedMany(items, !!body.tracked);
       sendJson(res, 200, { ok: true, tracked: result.tracked, count: items.length });
@@ -431,12 +528,12 @@ async function handleApi(req, res, url, pathname) {
       if (req.method !== 'POST') throw fail(405, 'Metode tidak didukung.');
       const body = await readJsonBody(req);
       const shouldTrack = body.tracked == null ? !font.tracked : !!body.tracked;
-      const result = store.setTracked(id, shouldTrack, {
+      const result = store.setTracked(id, shouldTrack, trackMetaFor(id, {
         family: font.family,
         subfamily: font.subfamily,
         fileName: font.fileName,
         filePath: font.filePath
-      });
+      }));
       sendJson(res, 200, { ok: true, tracked: result.tracked, id });
       return;
     }

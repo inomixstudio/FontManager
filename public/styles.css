@@ -877,6 +877,12 @@ svg {
   background: rgba(255, 105, 84, 0.1);
 }
 
+.chip.tracked {
+  color: #ffc06b;
+  border-color: rgba(255, 180, 84, 0.3);
+  background: rgba(255, 180, 84, 0.09);
+}
+
 .adobe-link {
   color: #ffb39e;
   text-decoration: underline;
