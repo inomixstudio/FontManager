@@ -5,7 +5,7 @@ Semua perubahan penting pada proyek ini didokumentasikan di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/) dan
 [Semantic Versioning](https://semver.org/lang/id/).
 
-## [Unreleased]
+## [1.2.1] — 2026-11-23
 
 ### Diperbaiki
 - `npm test` berjalan mandiri (server uji dimulai otomatis) dan kini menguji pemulihan cadangan;
@@ -73,6 +73,7 @@ tahan macet.
 - Pemasangan font per pengguna, panel progres per berkas, dan penanda font inti sistem.
 - Host desktop WinForms + WebView2 dengan peluncur `start.bat`.
 
+[1.2.1]: https://github.com/inomixstudio/FontManager/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/inomixstudio/FontManager/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/inomixstudio/FontManager/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/inomixstudio/FontManager/releases/tag/v1.0.0
