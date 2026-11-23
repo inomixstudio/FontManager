@@ -55,15 +55,13 @@ node --check server.js
 node --check public/app.js
 for %f in (lib\*.js) do node --check %f
 
-:: uji end-to-end: pasang → hapus tunggal → hapus massal → progres
-set FM_NO_OPEN=1
-set PORT=59331
-start /b node server.js
-node scripts/progresstest.js
+:: uji end-to-end: pasang → hapus tunggal → pulihkan → hapus massal → progres
+npm test
 ```
 
-Uji ini memasang dan menghapus beberapa salinan font di akun Anda, lalu membersihkan cadangannya.
-Jangan jalankan pada mesin produksi yang fontnya kritis.
+`npm test` mengurus server ujinya sendiri (memakai port bebas) dan menghentikannya lagi setelah
+selesai. Uji ini memasang dan menghapus beberapa salinan font di akun Anda, lalu membersihkan
+cadangannya. Jangan jalankan pada mesin produksi yang fontnya kritis.
 
 ## Mengirim perubahan
 

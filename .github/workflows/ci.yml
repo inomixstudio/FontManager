@@ -44,6 +44,10 @@ jobs:
             $hits | ForEach-Object { Write-Warning "  baris $($_.LineNumber): $($_.Line.Trim())" }
           }
 
+      - name: Uji end-to-end (pasang, hapus, pulihkan, progres)
+        shell: pwsh
+        run: npm test
+
       - name: Server dapat dijalankan
         shell: pwsh
         env:

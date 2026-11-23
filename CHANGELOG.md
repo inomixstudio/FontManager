@@ -5,6 +5,26 @@ Semua perubahan penting pada proyek ini didokumentasikan di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/) dan
 [Semantic Versioning](https://semver.org/lang/id/).
 
+## [Unreleased]
+
+### Diperbaiki
+- `npm test` berjalan mandiri (server uji dimulai otomatis) dan kini menguji pemulihan cadangan;
+  CI menjalankan uji end-to-end ini.
+- Keluarga/font yang dilacak tetapi berkasnya tidak terdeteksi dapat dibersihkan (berhenti
+  melacak) alih-alih gagal 404.
+- Server tidak lagi bisa jatuh saat berkas font/statis hilang di tengah-tengah: stream kini
+  menangani kejadian `error`.
+- Berkas sampah berekstensi `.ttf`/`.otf` ditolak sebelum ditulis dan didaftarkan ke registri.
+- Cadangan yatim di `data/backups/` direkonsiliasi saat aplikasi mulai.
+- Path permintaan tidak valid memakai status 400 (bukan 500); header CSP dan `Referrer-Policy`
+  diterapkan ke semua respons.
+- `track-batch` menolak permintaan di atas 500 ID alih-alih memotong diam-diam.
+- `entitlements.xml` Adobe dicadangkan (`.bak`) sebelum pertama kali diubah.
+- Folder data berpindah ke `%LOCALAPPDATA%\FontManager\data` bila folder aplikasi tidak dapat
+  ditulis (mis. diekstrak ke Program Files).
+- Unit test (`scripts/selftest.js`) untuk parser sfnt, rekonsiliasi cadangan, dan pelacakan;
+  `npm test` menjalankan unit test lalu uji end-to-end.
+
 ## [1.2.0] — 2026-11-23
 
 Rilis konsolidasi: dukungan Adobe Fonts, pelacakan keluarga yang andal, dan host desktop yang
@@ -55,4 +75,4 @@ tahan macet.
 
 [1.2.0]: https://github.com/inomixstudio/FontManager/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/inomixstudio/FontManager/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/inomixstudio/FontManager/releases/tag/v1.2.0
+[1.0.0]: https://github.com/inomixstudio/FontManager/releases/tag/v1.0.0

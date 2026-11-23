@@ -71,7 +71,7 @@ function sendJson(res, status, payload) {
         'Content-Encoding': 'gzip',
         Vary: 'Accept-Encoding',
         'Cache-Control': 'no-store',
-        'X-Content-Type-Options': 'nosniff'
+        ...SECURITY_HEADERS
       });
       res.end(body);
       return;
@@ -84,7 +84,7 @@ function sendJson(res, status, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': body.length,
     'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff'
+    ...SECURITY_HEADERS
   });
   res.end(body);
 }
@@ -121,13 +121,54 @@ function summarizeFont(font) {
   };
 }
 
+/*
+ * Header keamanan untuk semua respons. CSP dibuat minimal karena UI memakai
+ * banyak atribut `style` inline dan memuat berkas font dari endpoint lokal.
+ */
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'Content-Security-Policy':
+    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'"
+};
+
 function sendText(res, status, text) {
   res.writeHead(status, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Content-Length': Buffer.byteLength(text),
-    'Cache-Control': 'no-store'
+    'Cache-Control': 'no-store',
+    ...SECURITY_HEADERS
   });
   res.end(text);
+}
+
+/*
+ * Mengalirkan berkas dengan penanganan kesalahan. Tanpa listener 'error',
+ * berkas yang hilang/diganti di tengah-tengah (mis. font yang baru dihapus
+ * pengguna atau Creative Cloud) memicu unhandled error dan menjatuhkan proses.
+ */
+function streamFile(req, res, filePath, headers) {
+  let stream;
+  try {
+    stream = fs.createReadStream(filePath);
+  } catch (error) {
+    sendText(res, 404, 'Berkas tidak dapat dibaca.');
+    return;
+  }
+  stream.on('error', () => {
+    if (!res.headersSent) {
+      sendText(res, 404, 'Berkas tidak dapat dibaca.');
+      return;
+    }
+    try {
+      res.destroy();
+    } catch {
+      /* abaikan */
+    }
+  });
+  res.writeHead(200, headers);
+  stream.pipe(res);
 }
 
 function readBody(req, limit) {
@@ -213,15 +254,13 @@ function serveStatic(req, res, pathname) {
     return;
   }
 
-  res.writeHead(200, {
+  streamFile(req, res, filePath, {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Content-Length': stat.size,
     'Cache-Control': 'no-cache',
     ETag: etag,
-    'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'no-referrer'
+    ...SECURITY_HEADERS
   });
-  fs.createReadStream(filePath).pipe(res);
 }
 
 function serveFontFile(req, res, font) {
@@ -246,14 +285,13 @@ function serveFontFile(req, res, font) {
     return;
   }
 
-  res.writeHead(200, {
+  streamFile(req, res, font.filePath, {
     'Content-Type': FONT_MIME[ext] || 'application/octet-stream',
     'Content-Length': stat.size,
     'Cache-Control': 'private, max-age=300',
     ETag: etag,
-    'X-Content-Type-Options': 'nosniff'
+    ...SECURITY_HEADERS
   });
-  fs.createReadStream(font.filePath).pipe(res);
 }
 
 /**
@@ -422,7 +460,7 @@ function sendFontsPayload(res, status, payload) {
         'Content-Encoding': 'gzip',
         Vary: 'Accept-Encoding',
         'Cache-Control': 'no-store',
-        'X-Content-Type-Options': 'nosniff'
+        ...SECURITY_HEADERS
       });
       res.end(payloadCache.gz);
       return;
@@ -434,7 +472,7 @@ function sendFontsPayload(res, status, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': body.length,
     'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff'
+    ...SECURITY_HEADERS
   });
   res.end(body);
 }
@@ -474,10 +512,13 @@ async function handleApi(req, res, url, pathname) {
     if (parts.length === 3 && parts[2] === 'track-batch') {
       if (req.method !== 'POST') throw fail(405, 'Metode tidak didukung.');
       const body = await readJsonBody(req);
-      const ids = Array.isArray(body.ids)
-        ? [...new Set(body.ids.filter((id) => typeof id === 'string'))].slice(0, 500)
+      const rawIds = Array.isArray(body.ids)
+        ? [...new Set(body.ids.filter((id) => typeof id === 'string'))]
         : [];
-      if (!ids.length) throw fail(400, 'Daftar font kosong.');
+      if (rawIds.length > 500) {
+        throw fail(400, 'Terlalu banyak font dalam satu permintaan (maksimal 500).');
+      }
+      if (!rawIds.length) throw fail(400, 'Daftar font kosong.');
 
       // Klien mengirim metadata agar pelacakan per keluarga tidak perlu
       // memindai ulang seluruh folder font.
@@ -487,7 +528,7 @@ async function handleApi(req, res, url, pathname) {
         provided.set(item.id, item);
       }
 
-      const items = ids.map((id) => {
+      const items = rawIds.map((id) => {
         const meta = provided.get(id);
         return { id, meta: trackMetaFor(id, meta || {}) };
       });
@@ -499,24 +540,89 @@ async function handleApi(req, res, url, pathname) {
     if (parts.length === 3 && parts[2] === 'delete-batch') {
       if (req.method !== 'POST') throw fail(405, 'Metode tidak didukung.');
       const body = await readJsonBody(req);
-      const ids = Array.isArray(body.ids)
-        ? [...new Set(body.ids.filter((id) => typeof id === 'string'))].slice(0, MAX_BATCH_DELETE)
+      const rawIds = Array.isArray(body.ids)
+        ? [...new Set(body.ids.filter((id) => typeof id === 'string'))]
         : [];
-      if (!ids.length) throw fail(400, 'Daftar font kosong.');
+      if (rawIds.length > MAX_BATCH_DELETE) {
+        throw fail(400, `Terlalu banyak font dalam satu permintaan (maksimal ${MAX_BATCH_DELETE}).`);
+      }
+      if (!rawIds.length) throw fail(400, 'Daftar font kosong.');
+
       await scanner.scanFonts();
-      const fonts = ids.map((id) => scanner.findFontSync(id)).filter(Boolean);
-      if (!fonts.length) throw fail(404, 'Font tidak ditemukan. Pindai ulang daftar font.');
-      const result = await manage.deleteFonts(fonts, {
-        backup: body.backup !== false,
-        progressId: body.progressId
-      });
+      const fonts = [];
+      const unknownIds = [];
+      for (const id of rawIds) {
+        const font = scanner.findFontSync(id);
+        if (font) fonts.push(font);
+        else unknownIds.push(id);
+      }
+
+      // Entri lacak yang berkasnya tidak terdeteksi (synthetic) tidak ada di
+      // cache pindai. Untuk itu "membersihkan" berarti menghentikan pelacakan.
+      const tracked = store.trackedMap();
+      const untrackIds = unknownIds.filter((id) => tracked[id]);
+      if (!fonts.length && !untrackIds.length) {
+        throw fail(404, 'Font tidak ditemukan. Pindai ulang daftar font.');
+      }
+
+      const result = fonts.length
+        ? await manage.deleteFonts(fonts, {
+            backup: body.backup !== false,
+            progressId: body.progressId
+          })
+        : {
+            ok: true,
+            elevated: false,
+            canceled: false,
+            results: [],
+            error: null,
+            count: 0,
+            fileCount: 0,
+            backups: [],
+            deleted: []
+          };
+
+      if (untrackIds.length) {
+        try {
+          store.setTrackedMany(
+            untrackIds.map((id) => ({ id })),
+            false
+          );
+        } catch {
+          /* abaikan: pelacakan tetap berfungsi untuk sesi ini */
+        }
+        result.untracked = untrackIds;
+        result.count = (result.count || 0) + untrackIds.length;
+      }
+
       sendJson(res, result.ok ? 200 : 207, result);
       return;
     }
 
     const id = parts[2];
     const font = await scanner.getFontById(id);
-    if (!font) throw fail(404, 'Font tidak ditemukan. Pindai ulang daftar font.');
+    if (!font) {
+      // Font yang dilacak tetapi berkasnya tidak terdeteksi: menghapusnya
+      // berarti menghentikan pelacakan, bukan membersihkan berkas/registri.
+      if (req.method === 'DELETE' && parts.length === 3 && store.trackedMap()[id]) {
+        try {
+          store.setTracked(id, false);
+        } catch {
+          /* abaikan */
+        }
+        sendJson(res, 200, {
+          ok: true,
+          cleaned: true,
+          untracked: true,
+          id,
+          backup: null,
+          needsAdmin: false,
+          font: null
+        });
+        return;
+      }
+      throw fail(404, 'Font tidak ditemukan. Pindai ulang daftar font.');
+    }
 
     if (parts.length === 4 && parts[3] === 'file') {
       if (req.method !== 'GET' && req.method !== 'HEAD') throw fail(405, 'Metode tidak didukung.');
@@ -632,7 +738,11 @@ const server = http.createServer(async (req, res) => {
   let pathname = '/';
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || HOST}`);
-    pathname = decodeURIComponent(url.pathname);
+    try {
+      pathname = decodeURIComponent(url.pathname);
+    } catch {
+      throw fail(400, 'Path permintaan tidak valid.');
+    }
     if (pathname.startsWith('/api/')) {
       await handleApi(req, res, url, pathname);
     } else {
@@ -703,6 +813,14 @@ function openDesktopApp() {
 async function main() {
   activePort = await listenWithFallback(START_PORT);
   const url = `http://${HOST}:${activePort}`;
+  try {
+    const removedBackups = store.reconcileBackups();
+    if (removedBackups.length) {
+      console.log(`  ${removedBackups.length} berkas cadangan yatim dibersihkan.`);
+    }
+  } catch (error) {
+    console.warn('  Rekonsiliasi cadangan dilewati:', error.message);
+  }
   console.log('');
   console.log('  Font Manager siap');
   console.log(`  → ${url}`);

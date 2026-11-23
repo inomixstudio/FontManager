@@ -1757,14 +1757,14 @@ function openModal({ title, subtitle, content, footer }) {
   return close;
 }
 
-function confirmModal({ title, subtitle, message, confirmLabel = 'Lanjutkan' }) {
+function confirmModal({ title, subtitle, message, confirmLabel = 'Lanjutkan', tone = 'danger' }) {
   return new Promise((resolve) => {
     const content = el('div', { class: 'modal-body' }, el('p', {}, message));
     let close;
     const cancel = el('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Batal');
     const confirm = el(
       'button',
-      { class: 'btn danger', type: 'button' },
+      { class: `btn ${tone === 'danger' ? 'danger' : 'primary'}`, type: 'button' },
       confirmLabel
     );
     confirm.addEventListener('click', () => {
@@ -3265,13 +3265,17 @@ function confirmDelete(font) {
         task.markAll('done', hasFile ? 'Dihapus' : 'Dibersihkan');
         task.finish({
           title: 'Penghapusan selesai',
-          subtitle: `${label} berhasil dihapus${data.backup ? ' · cadangan tersimpan di tab Cadangan' : ''}.`,
+          subtitle: data.cleaned
+            ? `${label} dibersihkan dari daftar pelacakan.`
+            : `${label} berhasil dihapus${data.backup ? ' · cadangan tersimpan di tab Cadangan' : ''}.`,
           hint: 'Daftar font sudah diperbarui.',
           tone: 'done'
         });
         toast(
           'success',
-          `${label} berhasil dihapus${data.backup ? ' — cadangan tersimpan di tab Cadangan' : ''}.`,
+          data.cleaned
+            ? `${label} dibersihkan dari daftar pelacakan.`
+            : `${label} berhasil dihapus${data.backup ? ' — cadangan tersimpan di tab Cadangan' : ''}.`,
           { timeout: 5000 }
         );
       } else if (data.canceled) {
