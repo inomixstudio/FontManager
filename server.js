@@ -58,6 +58,7 @@ function fail(status, message) {
 }
 
 function sendJson(res, status, payload) {
+  applyCors(res.req, res);
   let body = Buffer.from(JSON.stringify(payload), 'utf8');
   const req = res.req;
   const acceptsGzip = req && /\bgzip\b/i.test(String(req.headers['accept-encoding'] || ''));
@@ -69,7 +70,7 @@ function sendJson(res, status, payload) {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': body.length,
         'Content-Encoding': 'gzip',
-        Vary: 'Accept-Encoding',
+        Vary: (res.getHeader('Vary') ? res.getHeader('Vary') + ', ' : '') + 'Accept-Encoding',
         'Cache-Control': 'no-store',
         ...SECURITY_HEADERS
       });
@@ -200,6 +201,35 @@ async function readJsonBody(req) {
   }
 }
 
+/* Asal permintaan yang diizinkan:
+   - tanpa Origin (klien native / curl) — seperti biasa;
+   - sesama asal lokal (127.0.0.1/localhost pada port server ini) — UI web aplikasi;
+   - `null` (file://) dan skema `uxp:` — panel UXP Photoshop (mis. com.99desains.sampul).
+   Selain itu tetap ditolak: ini pertahanan utama dari DNS rebinding. */
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (origin === 'null') return true;
+  try {
+    const parsed = new URL(origin);
+    if (/^uxp(-[a-z0-9]+)?:$/i.test(parsed.protocol)) return true;
+    // Klien lokal apa pun (port berapa pun) boleh; yang ditolak adalah asal jarak
+    // jauh — ini yang mencegah DNS rebinding selain pemeriksaan Host di atas.
+    return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost';
+  } catch {
+    return false;
+  }
+}
+
+function applyCors(req, res) {
+  const origin = req && req.headers.origin;
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    // Chromium (basis UXP & peramban) meminta izin private-network-access untuk
+    // memanggil localhost dari konteks lain; dijawab lewat header ini.
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  }
+}
+
 function assertRequest(req) {
   const host = String(req.headers.host || '').toLowerCase();
   if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) {
@@ -207,17 +237,8 @@ function assertRequest(req) {
   }
 
   const origin = req.headers.origin;
-  if (origin) {
-    let allowed = false;
-    try {
-      const parsed = new URL(origin);
-      allowed =
-        (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
-        Number(parsed.port || 80) === activePort;
-    } catch {
-      allowed = false;
-    }
-    if (!allowed) throw fail(403, 'Asal permintaan tidak diizinkan.');
+  if (origin && !isAllowedOrigin(origin)) {
+    throw fail(403, 'Asal permintaan tidak diizinkan.');
   }
 
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-fm-request'] !== '1') {
@@ -435,6 +456,7 @@ function fontsCacheKey(payload) {
 }
 
 function sendFontsPayload(res, status, payload) {
+  applyCors(res.req, res);
   const key = fontsCacheKey(payload);
   if (payloadCache.key !== key) {
     payloadCache.key = key;
@@ -458,7 +480,7 @@ function sendFontsPayload(res, status, payload) {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': payloadCache.gz.length,
         'Content-Encoding': 'gzip',
-        Vary: 'Accept-Encoding',
+        Vary: (res.getHeader('Vary') ? res.getHeader('Vary') + ', ' : '') + 'Accept-Encoding',
         'Cache-Control': 'no-store',
         ...SECURITY_HEADERS
       });
@@ -737,6 +759,16 @@ const server = http.createServer(async (req, res) => {
   const startedAt = Date.now();
   let pathname = '/';
   try {
+    if (req.method === 'OPTIONS') {
+      /* Preflight CORS untuk klien lintas asal yang diizinkan (panel UXP dsb.). */
+      applyCors(req, res);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Font-Name, X-FM-Request');
+      res.setHeader('Access-Control-Max-Age', '600');
+      res.writeHead(204);
+      res.end();
+      return;
+    }
     const url = new URL(req.url || '/', `http://${req.headers.host || HOST}`);
     try {
       pathname = decodeURIComponent(url.pathname);

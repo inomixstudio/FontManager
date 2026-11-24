@@ -201,6 +201,11 @@ Aplikasi berjalan lokal dengan model keamanan berlapis: server hanya mengikat `1
 memvalidasi header `Host` dan `Origin`, mewajibkan header `X-FM-Request` untuk operasi tulis,
 menolak path traversal, dan memakai WebView2 dengan ekstensi/DevTools dimatikan.
 
+Asal yang diterima: tanpa `Origin` (klien native), `localhost`/`127.0.0.1` (UI aplikasi dan
+alat lokal), skema `uxp:` (panel UXP Photoshop), serta `null` (file://). Asal jarak jauh —
+termasuk situs web mana pun — tetap **ditolak** (403), sehingga perlindungan DNS rebinding
+lewat pemeriksaan `Host` tetap utuh.
+
 Celah keamanan **jangan** dilaporkan lewat issue publik — lihat [SECURITY.md](SECURITY.md).
 
 ## Berkontribusi

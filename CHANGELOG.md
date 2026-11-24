@@ -5,6 +5,21 @@ Semua perubahan penting pada proyek ini didokumentasikan di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/) dan
 [Semantic Versioning](https://semver.org/lang/id/).
 
+## [1.2.2] — 2026-11-24
+
+### Ditambahkan
+- API kini bisa dipanggil **panel UXP Photoshop** (mis. `com.99desains.sampul`): asal `uxp:`
+  dan `null` (file://) diizinkan, respons API membawa `Access-Control-Allow-Origin` (+
+  `Access-Control-Allow-Private-Network` untuk Chromium), dan preflight `OPTIONS` dijawab
+  dengan daftar method serta header `Content-Type`, `X-Font-Name`, `X-FM-Request` — sehingga
+  panel dapat memasang font langsung lewat `POST /api/install`.
+- Asal lokal (`localhost`/`127.0.0.1`) diizinkan untuk port berapa pun, bukan hanya port server
+  ini, supaya alat lokal lain bisa memakai API yang sama.
+
+### Keamanan
+- Pemeriksaan `Host` (anti DNS rebinding) dan syarat `X-FM-Request` untuk operasi tulis tetap
+  berlaku; asal jarak jauh (situs web mana pun) masih ditolak dengan 403.
+
 ## [1.2.1] — 2026-11-23
 
 ### Diperbaiki
