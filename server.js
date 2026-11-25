@@ -14,6 +14,7 @@ const adobe = require('./lib/adobeFonts');
 const HOST = '127.0.0.1';
 const START_PORT = Number(process.env.PORT || 4317);
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const APP_VERSION = require('./package.json').version;
 const MAX_INSTALL_BYTES = 128 * 1024 * 1024;
 const MAX_JSON_BYTES = 1024 * 1024;
 const MAX_BATCH_DELETE = 2000;
@@ -509,11 +510,19 @@ async function handleApi(req, res, url, pathname) {
     if (req.method !== 'GET') throw fail(405, 'Metode tidak didukung.');
     sendJson(res, 200, {
       ok: true,
+      name: 'Font Manager',
+      version: APP_VERSION,
       platform: process.platform,
       port: activePort,
       dirs: { system: scanner.systemFontsDir(), user: scanner.userFontsDir(), adobe: adobe.livetypeDir() },
       dataDir: store.DATA_DIR
     });
+    return;
+  }
+
+  if (resource === 'scan-progress' && parts.length === 2) {
+    if (req.method !== 'GET') throw fail(405, 'Metode tidak didukung.');
+    sendJson(res, 200, { ok: true, scan: scanner.scanProgress() });
     return;
   }
 
@@ -621,6 +630,56 @@ async function handleApi(req, res, url, pathname) {
       return;
     }
 
+    if (parts.length === 3 && parts[2] === 'backup-batch') {
+      if (req.method !== 'POST') throw fail(405, 'Metode tidak didukung.');
+      const body = await readJsonBody(req);
+      const rawIds = Array.isArray(body.ids)
+        ? [...new Set(body.ids.filter((id) => typeof id === 'string'))]
+        : [];
+      if (rawIds.length > 500) {
+        throw fail(400, 'Terlalu banyak font dalam satu permintaan (maksimal 500).');
+      }
+      if (!rawIds.length) throw fail(400, 'Daftar font kosong.');
+
+      await scanner.scanFonts();
+      const backups = [];
+      const failed = [];
+      for (const id of rawIds) {
+        const font = scanner.findFontSync(id);
+        if (!font) {
+          failed.push({ id, error: 'Font tidak ditemukan.' });
+          continue;
+        }
+        if (!font.exists) {
+          failed.push({ id, error: 'Berkas font tidak tersedia di disk.' });
+          continue;
+        }
+        try {
+          const entry = manage.createBackup(font, { mode: 'manual' });
+          if (!entry) throw fail(409, 'Font tidak memiliki berkas yang dapat dicadangkan.');
+          backups.push({
+            id: entry.id,
+            fontId: font.id,
+            fileName: entry.fileName,
+            family: entry.family,
+            size: entry.size
+          });
+        } catch (error) {
+          failed.push({ id, error: error.message || 'Gagal mencadangkan.' });
+        }
+      }
+
+      sendJson(res, backups.length ? (failed.length ? 207 : 200) : 400, {
+        ok: failed.length === 0,
+        error: backups.length
+          ? null
+          : (failed[0] && failed[0].error) || 'Tidak ada font yang dapat dicadangkan.',
+        backups,
+        failed
+      });
+      return;
+    }
+
     const id = parts[2];
     const font = await scanner.getFontById(id);
     if (!font) {
@@ -716,6 +775,12 @@ async function handleApi(req, res, url, pathname) {
         totalSize: items.reduce((sum, item) => sum + (item.size || 0), 0),
         dir: store.BACKUP_DIR
       });
+      return;
+    }
+
+    if (parts.length === 3 && parts[2] === 'folder') {
+      if (req.method !== 'POST') throw fail(405, 'Metode tidak didukung.');
+      sendJson(res, 200, await manage.revealBackupFolder());
       return;
     }
 
@@ -846,6 +911,8 @@ async function main() {
   activePort = await listenWithFallback(START_PORT);
   const url = `http://${HOST}:${activePort}`;
   try {
+    const normalized = store.normalizeBackupFiles();
+    if (normalized) console.log('  Ekstensi cadangan lama dinormalisasi ke .ttf/.otf.');
     const removedBackups = store.reconcileBackups();
     if (removedBackups.length) {
       console.log(`  ${removedBackups.length} berkas cadangan yatim dibersihkan.`);

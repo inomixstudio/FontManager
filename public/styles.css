@@ -605,6 +605,17 @@ svg {
   color: var(--muted-2);
 }
 
+.content-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.content-side > .btn {
+  flex: none;
+}
+
 .content-meta {
   font-size: 11px;
   color: var(--muted);
@@ -2007,6 +2018,10 @@ svg {
     align-items: flex-start;
     gap: 8px;
   }
+  .content-side {
+    width: 100%;
+    flex-wrap: wrap;
+  }
   .toolbar {
     align-items: stretch;
   }
@@ -2530,4 +2545,153 @@ body.is-selecting .content {
   .task-row-status {
     min-width: 74px;
   }
+}
+
+/* --------------------------------------------------------- layar pembuka */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(1100px 560px at 15% -8%, rgba(124, 140, 255, 0.13), transparent 62%),
+    radial-gradient(900px 520px at 92% 4%, rgba(180, 107, 255, 0.1), transparent 58%),
+    var(--bg);
+  transition:
+    opacity 0.32s ease,
+    visibility 0.32s ease;
+}
+
+.splash.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-card {
+  width: min(420px, 92vw);
+  padding: 30px 28px 26px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(17, 21, 30, 0.92);
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: splash-muncul 0.35s ease-out both,
+    splash-napas 3.2s ease-in-out infinite;
+}
+
+@keyframes splash-muncul {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes splash-napas {
+  0%,
+  100% {
+    box-shadow: var(--shadow);
+  }
+  50% {
+    box-shadow: 0 22px 56px rgba(124, 140, 255, 0.16);
+  }
+}
+
+.splash-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.splash-logo img {
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 8px 22px rgba(124, 140, 255, 0.28));
+}
+
+.splash-name {
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.splash-sub {
+  margin-top: 5px;
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.splash-bar {
+  margin-top: 20px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.splash-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.22s ease-out;
+}
+
+.splash-percent {
+  margin-top: 9px;
+  font-size: 13px;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* -------------------------------------------------------- kaki sidebar */
+
+.sidebar-foot {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lang-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  background: #0e121a;
+  align-self: flex-start;
+}
+
+.lang-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  padding: 5px 12px;
+  border-radius: 7px;
+}
+
+.lang-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.app-version {
+  font-size: 10.5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
 }

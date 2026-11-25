@@ -5,6 +5,22 @@ Semua perubahan penting pada proyek ini didokumentasikan di berkas ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/) dan
 [Semantic Versioning](https://semver.org/lang/id/).
 
+## [1.2.3] — 2026-11-25
+
+### Ditambahkan
+- Tombol **Cadangkan terpilih** pada mode Pilih untuk mencadangkan beberapa keluarga font sekaligus.
+- Tombol **Cadangkan** di detail font dan detail famili Adobe Fonts, serta tombol **Buka folder**
+  di tab Cadangan.
+- Antarmuka dua bahasa: tombol **ID/EN** di bilah atas, dengan pilihan bahasa tersimpan.
+
+### Diperbaiki
+- Cadangan Adobe Fonts diganti namanya ke nama font asli (cadangan lama ikut diganti saat server dijalankan).
+- Rekonsiliasi cadangan saat startup kembali berjalan (sebelumnya memanggil fungsi yang tidak ada).
+- Cadangan manual tetap disimpan setelah dipulihkan sebagai salinan.
+- Pencadangan massal dipecah per 500 font sesuai batas server.
+- Nama cadangan hanya membuang ekstensi font, jadi nama seperti "Font 1.5" tidak lagi terpotong.
+- Status progres pemindaian tidak tertinggal aktif bila pemindaian gagal.
+
 ## [1.2.2] — 2026-11-24
 
 ### Ditambahkan

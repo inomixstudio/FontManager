@@ -1,6 +1,6 @@
 {
   "name": "font-manager",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "Manajer font lokal untuk Windows: deteksi, pratinjau, lacak, pasang, cadangkan, dan hapus font terinstal — termasuk font langganan Adobe Fonts.",
   "keywords": [

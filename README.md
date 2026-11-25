@@ -63,7 +63,9 @@ Termasuk font langganan **Adobe Fonts** dari Creative Cloud.
   Font sistem memakai elevasi UAC; font inti Windows butuh konfirmasi khusus. Maksimal 2.000
   berkas per operasi.
 - **Cadangan otomatis & pemulihan** — berkas dicadangkan lebih dulu ke `data/backups`, lalu dapat
-  dipulihkan kapan saja dari tab **Cadangan**.
+  dipulihkan kapan saja dari tab **Cadangan**. Tombol **Cadangkan** juga tersedia di detail font
+  dan detail famili Adobe untuk membuat salinan kapan saja; cadangan manual yang dipulihkan saat
+  berkas asli masih ada disalin sebagai font baru di folder font pengguna.
 - **Pasang font** — `.ttf`, `.otf`, `.ttc`, `.otc` untuk akun Anda (tanpa administrator), lewat
   tombol atau seret-lepas.
 - **Progres rinci** — panel progres menampilkan status per berkas (Menunggu → Tercadangkan →
@@ -116,7 +118,10 @@ Lalu buka `http://127.0.0.1:4317` (atau port yang tercetak di konsol).
 | Lacak | Klik ikon bintang pada kartu, atau **Lacak keluarga** di detail |
 | Hapus | **Hapus** pada kartu (seluruh keluarga) atau hapus satu berkas di detail |
 | Hapus massal | **Pilih** → tandai kartu → **Hapus N berkas** |
+| Cadangkan massal | **Pilih** → tandai kartu → **Cadangkan N berkas** |
 | Pulihkan | Tab **Cadangan** → **Pulihkan** |
+| Buka folder cadangan | Tab **Cadangan** → **Buka folder** (folder `data/backups`) |
+| Cadangkan | Tombol **Cadangkan** di detail font, atau di detail famili Adobe |
 | Pasang | **Tambah font** atau seret berkas ke jendela |
 
 ## Adobe Fonts
@@ -126,6 +131,9 @@ Font langganan Adobe Fonts yang aktif disinkronkan Creative Cloud ke
 tersebut muncul di tab **Adobe** lengkap dengan pratinjau dan tautan ke fonts.adobe.com.
 
 - Bisa **dilacak, dicadangkan, dihapus, dan dipulihkan** seperti font biasa.
+- Tombol **Cadangkan** di detail famili menyimpan seluruh berkas Adobe keluarga sekaligus; di
+  detail satu berkas tersedia tombol yang sama. Cadangan manual diberi label **Manual** di tab
+  **Cadangan**.
 - Saat dihapus, entri *entitlement* Adobe ikut dicabut agar Creative Cloud tidak mengunduhnya
   kembali; pemulihan dari cadangan mendaftarkannya kembali.
 - ID font memakai id sinkronisasi (`adobe-<id>`), bukan path berkas, sehingga pelacakan tetap

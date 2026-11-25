@@ -101,10 +101,30 @@ function debounce(fn, wait) {
   };
 }
 
-const numberFormat = new Intl.NumberFormat('id-ID');
-const dateTimeFormat = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-const timeFormat = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' });
-const byName = new Intl.Collator('id', { sensitivity: 'base', numeric: true }).compare;
+const { t, tp } = window.I18N;
+
+/* Pengenal angka/tanggal/urutan mengikuti bahasa antarmuka yang dipilih. */
+let numberFormat = new Intl.NumberFormat(window.I18N.localeTag());
+let dateTimeFormat = new Intl.DateTimeFormat(window.I18N.localeTag(), {
+  dateStyle: 'medium',
+  timeStyle: 'short'
+});
+let timeFormat = new Intl.DateTimeFormat(window.I18N.localeTag(), {
+  hour: '2-digit',
+  minute: '2-digit'
+});
+let byName = new Intl.Collator(window.I18N.localeTag().slice(0, 2), {
+  sensitivity: 'base',
+  numeric: true
+}).compare;
+
+function applyLocaleFormats() {
+  const tag = window.I18N.localeTag();
+  numberFormat = new Intl.NumberFormat(tag);
+  dateTimeFormat = new Intl.DateTimeFormat(tag, { dateStyle: 'medium', timeStyle: 'short' });
+  timeFormat = new Intl.DateTimeFormat(tag, { hour: '2-digit', minute: '2-digit' });
+  byName = new Intl.Collator(tag.slice(0, 2), { sensitivity: 'base', numeric: true }).compare;
+}
 
 function fmtNumber(value) {
   return numberFormat.format(Number(value) || 0);
@@ -120,7 +140,9 @@ function fmtBytes(bytes) {
     size /= 1024;
     unit++;
   }
-  return `${size >= 100 ? Math.round(size) : size.toFixed(1).replace('.', ',')} ${units[unit]}`;
+  const pecahan = size >= 100 ? String(Math.round(size)) : size.toFixed(1);
+  const nilai = window.I18N.getLanguage() === 'en' ? pecahan : pecahan.replace('.', ',');
+  return `${nilai} ${units[unit]}`;
 }
 
 function fmtDateTime(value) {
@@ -130,9 +152,9 @@ function fmtDateTime(value) {
 }
 
 function fmtTime(value) {
-  if (!value) return 'baru saja';
+  if (!value) return t('baru saja');
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'baru saja' : timeFormat.format(date);
+  return Number.isNaN(date.getTime()) ? t('baru saja') : timeFormat.format(date);
 }
 
 function norm(value) {
@@ -265,8 +287,8 @@ const STYLE_ABBREVIATIONS = {
   md: 'Medium',
   med: 'Medium',
   medi: 'Medium',
-  rg: 'Regular',
-  reg: 'Regular',
+  rg: t('Regular'),
+  reg: t('Regular'),
   bk: 'Black',
   blck: 'Black',
   lght: 'Light',
@@ -297,7 +319,7 @@ const STYLE_WORD_LABELS = {
   thin: 'Thin',
   light: 'Light',
   book: 'Book',
-  regular: 'Regular',
+  regular: t('Regular'),
   normal: 'Normal',
   roman: 'Roman',
   medium: 'Medium',
@@ -450,7 +472,7 @@ function formatStyleTokens(tokens) {
   if (!list.length) return '';
   const italics = list.filter((token) => token === 'Italic' || token === 'Oblique');
   const weights = list.filter(
-    (token) => !['Italic', 'Oblique', 'Regular', 'Normal', 'Roman'].includes(token)
+    (token) => !['Italic', 'Oblique', t('Regular'), 'Normal', 'Roman'].includes(token)
   );
 
   let label = weights.join(' ');
@@ -625,7 +647,7 @@ const LEGACY_PIECES = [
   ['ultra', 'Ultra'],
   ['narrow', 'Narrow'],
   ['medium', 'Medium'],
-  ['regular', 'Regular'],
+  ['regular', t('Regular')],
   ['normal', 'Normal'],
   ['cond', 'Condensed'],
   ['cn', 'Condensed'],
@@ -663,7 +685,7 @@ const LEGACY_PIECES = [
   ['hv', 'Heavy'],
   ['md', 'Medium'],
   ['lt', 'Light'],
-  ['rg', 'Regular'],
+  ['rg', t('Regular')],
   ['th', 'Thin'],
   ['it', 'Italic'],
   ['l', 'Light']
@@ -879,7 +901,7 @@ function familyDisplayFor(files) {
 
   if (best) return best.name;
   return cleanFamilyDisplay(
-    String((files[0] && (files[0].family || files[0].fileName)) || 'Font tanpa nama')
+    String((files[0] && (files[0].family || files[0].fileName)) || t('Font tanpa nama'))
   );
 }
 
@@ -918,7 +940,7 @@ function isItalicStyleToken(token) {
 }
 
 function isPlainStyleToken(token) {
-  return token === 'Regular' || token === 'Normal' || token === 'Roman';
+  return token === t('Regular') || token === 'Normal' || token === 'Roman';
 }
 
 function isFeatureStyleToken(token) {
@@ -958,7 +980,7 @@ function styleLabel(font, group) {
   const fullTokens = styleTokensIn(nameSuffix(font.fullName || '', base));
 
   if (sub && !isGarbageSubfamily(sub) && !isPureStyleText(sub)) {
-    const descriptor = cleanStyleText(sub) || 'Regular';
+    const descriptor = cleanStyleText(sub) || t('Regular');
     const descriptorHasItalic =
       subTokens.some(isItalicStyleToken) || /\b(italic|oblique)\b/i.test(sub);
     const extraWeights = nonPlainStyleTokens(familyTokens).filter(
@@ -974,7 +996,7 @@ function styleLabel(font, group) {
     if (prefix) parts.push(prefix);
     if (descriptor) parts.push(descriptor);
     if (!descriptorHasItalic && italic) parts.push(italic);
-    return cleanStyleText(parts.filter(Boolean).join(' ')) || 'Regular';
+    return cleanStyleText(parts.filter(Boolean).join(' ')) || t('Regular');
   }
 
   const baseWeights = nonPlainStyleTokens(familyTokens);
@@ -1040,7 +1062,7 @@ function styleLabel(font, group) {
     fileTokens.find(isPlainStyleToken) ||
     fullTokens.find(isPlainStyleToken);
   if (plain) return plain;
-  return font.italic ? 'Italic' : 'Regular';
+  return font.italic ? 'Italic' : t('Regular');
 }
 
 function fontLabel(font) {
@@ -1051,7 +1073,7 @@ function fontLabel(font) {
   const styleTokens = styleTokensIn(style);
   const redundant =
     styleTokens.length > 0 && styleTokens.every((token) => baseTokens.includes(token));
-  if (!style || style === 'Regular' || redundant) return base;
+  if (!style || style === t('Regular') || redundant) return base;
   return `${base} ${style}`;
 }
 
@@ -1320,7 +1342,7 @@ function applyFaceResult(card, id, ok) {
     card.classList.remove('is-loaded');
     card.classList.add('is-static');
     if (sample && group) {
-      sample.textContent = NO_PREVIEW_LABEL;
+      sample.textContent = t(NO_PREVIEW_LABEL);
     }
   }
 }
@@ -1389,7 +1411,7 @@ function toast(kind, message, options = {}) {
     icon(kindIcon),
     el('div', { class: 'toast-body' }, message)
   );
-  const close = el('button', { class: 'toast-close', type: 'button', 'aria-label': 'Tutup' }, icon('close'));
+  const close = el('button', { class: 'toast-close', type: 'button', 'aria-label': t('Tutup') }, icon('close'));
   node.append(close);
   if (typeof options.onClick === 'function') {
     node.classList.add('is-clickable');
@@ -1459,7 +1481,7 @@ function setTaskStatus(row, status, detail) {
   } else if (meta.icon) {
     holder.append(icon(meta.icon));
   }
-  holder.append(document.createTextNode(detail || meta.text));
+  holder.append(document.createTextNode(detail ? t(detail) : t(meta.text)));
 }
 
 function taskGuard() {
@@ -1467,8 +1489,8 @@ function taskGuard() {
   toast(
     'warn',
     taskView.hidden
-      ? 'Proses font masih berjalan di latar. Tunggu sampai selesai sebelum memulai operasi lain.'
-      : 'Proses font sedang berjalan di panel progres. Selesaikan atau sembunyikan panelnya.',
+      ? t('Proses font masih berjalan di latar. Tunggu sampai selesai sebelum memulai operasi lain.')
+      : t('Proses font sedang berjalan di panel progres. Selesaikan atau sembunyikan panelnya.'),
     { timeout: 4200 }
   );
   return true;
@@ -1503,7 +1525,7 @@ function hideTask() {
     document.body.classList.remove('no-scroll');
   }
   clearStickyToast();
-  taskView.stickyToast = toast('info', 'Proses font sedang berjalan — klik untuk melihat progresnya.', {
+  taskView.stickyToast = toast('info', t('Proses font sedang berjalan — klik untuk melihat progresnya.'), {
     timeout: 0,
     onClick: showTask
   });
@@ -1553,7 +1575,7 @@ function openTask({ title, subtitle, hint, rows }) {
   const hideBtn = taskNode('taskHide');
 
   taskNode('taskTitle').textContent = title;
-  taskNode('taskSub').textContent = subtitle || 'Menyiapkan…';
+  taskNode('taskSub').textContent = subtitle || t('Menyiapkan…');
   taskNode('taskHint').textContent = hint || '';
   taskNode('taskPercent').textContent = '0%';
   taskNode('taskCounter').textContent = '';
@@ -1588,7 +1610,7 @@ function openTask({ title, subtitle, hint, rows }) {
       el(
         'div',
         { class: 'task-row task-row-more' },
-        el('span', { class: 'task-row-name' }, `+${fmtNumber(rows.length - shown.length)} berkas lainnya`)
+        el('span', { class: 'task-row-name' }, tp('+{count} berkas lainnya', { count: fmtNumber(rows.length - shown.length) }))
       )
     );
   }
@@ -1653,7 +1675,10 @@ function openTask({ title, subtitle, hint, rows }) {
       const row = viewRows[index];
       if (row) setTaskStatus(row, status, detail);
       if (isDone && autoProgress && total) {
-        api.setProgress(completed / total, `${fmtNumber(completed)} / ${fmtNumber(total)}`);
+        api.setProgress(
+          completed / total,
+          tp('{done} / {total}', { done: fmtNumber(completed), total: fmtNumber(total) })
+        );
       }
     },
     markAll(status, detail) {
@@ -1740,7 +1765,7 @@ function openModal({ title, subtitle, content, footer }) {
       'div',
       { class: 'modal-head' },
       el('div', {}, el('h3', {}, title), subtitle ? el('p', {}, subtitle) : null),
-      el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Tutup', onclick: close }, icon('close'))
+      el('button', { class: 'icon-btn', type: 'button', 'aria-label': t('Tutup'), onclick: close }, icon('close'))
     ),
     content,
     footer && footer.length ? el('div', { class: 'modal-foot' }, footer) : null
@@ -1757,11 +1782,11 @@ function openModal({ title, subtitle, content, footer }) {
   return close;
 }
 
-function confirmModal({ title, subtitle, message, confirmLabel = 'Lanjutkan', tone = 'danger' }) {
+function confirmModal({ title, subtitle, message, confirmLabel = t('Lanjutkan'), tone = 'danger' }) {
   return new Promise((resolve) => {
     const content = el('div', { class: 'modal-body' }, el('p', {}, message));
     let close;
-    const cancel = el('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Batal');
+    const cancel = el('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, t('Batal'));
     const confirm = el(
       'button',
       { class: `btn ${tone === 'danger' ? 'danger' : 'primary'}`, type: 'button' },
@@ -1814,14 +1839,15 @@ function computeList() {
 }
 
 function render() {
+  els.openBackupFolder.hidden = state.view !== 'backups';
   if (state.view === 'backups') {
     renderBackups();
     return;
   }
 
   const view = VIEWS[state.view] || VIEWS.all;
-  els.viewTitle.textContent = view.title;
-  els.viewSub.textContent = view.sub;
+  els.viewTitle.textContent = t(view.title);
+  els.viewSub.textContent = t(view.sub);
   els.grid.className = 'grid';
   els.grid.innerHTML = '';
   els.sentinel.hidden = true;
@@ -1831,7 +1857,7 @@ function render() {
 
   const list = computeList();
   if (!list.length) {
-    els.viewInfo.textContent = '0 keluarga';
+    els.viewInfo.textContent = t('0 keluarga');
     renderEmpty();
     updateSelectionUI();
     return;
@@ -1842,9 +1868,11 @@ function render() {
 
   const fileCount = list.reduce((sum, group) => sum + group.files.length, 0);
   const totalSize = list.reduce((sum, group) => sum + group.totalSize, 0);
-  els.viewInfo.textContent = `${fmtNumber(list.length)} keluarga · ${fmtNumber(fileCount)} berkas · ${fmtBytes(
-    totalSize
-  )}`;
+  els.viewInfo.textContent = tp('{families} keluarga · {files} berkas · {size}', {
+    families: fmtNumber(list.length),
+    files: fmtNumber(fileCount),
+    size: fmtBytes(totalSize)
+  });
   updateSelectionUI();
 }
 
@@ -1866,7 +1894,9 @@ function appendBatch() {
   if (state.rendered < list.length) {
     els.sentinel.hidden = false;
     if (els.loadMore) {
-      els.loadMore.textContent = `Muat lebih banyak — ${fmtNumber(list.length - state.rendered)} keluarga tersisa`;
+      els.loadMore.textContent = tp('Muat lebih banyak — {count} keluarga tersisa', {
+        count: fmtNumber(list.length - state.rendered)
+      });
     }
     sentinelObserver.observe(els.sentinel);
     requestAnimationFrame(() => {
@@ -1882,9 +1912,9 @@ function renderEmpty() {
   const query = state.query.trim();
   if (query) {
     showEmpty(
-      `Tidak ada hasil untuk “${query}”`,
-      'Coba kata kunci lain, atau hapus filter pencarian.',
-      'Hapus pencarian',
+      tp('Tidak ada hasil untuk “{query}”', { query }),
+      t('Coba kata kunci lain, atau hapus filter pencarian.'),
+      t('Hapus pencarian'),
       () => {
         els.search.value = '';
         state.query = '';
@@ -1896,25 +1926,25 @@ function renderEmpty() {
 
   if (state.view === 'tracked') {
     showEmpty(
-      'Belum ada keluarga dilacak',
-      'Tekan ikon bintang pada kartu font untuk menandai seluruh keluarga dan memantaunya dari sini.',
+      t('Belum ada keluarga dilacak'),
+      t('Tekan ikon bintang pada kartu font untuk menandai seluruh keluarga dan memantaunya dari sini.'),
       null,
       null
     );
     return;
   }
   if (state.view === 'missing') {
-    showEmpty('Tidak ada entri bermasalah', 'Semua berkas font dan entri registri dalam kondisi baik.', null, null);
+    showEmpty(t('Tidak ada entri bermasalah'), t('Semua berkas font dan entri registri dalam kondisi baik.'), null, null);
     return;
   }
   if (state.view === 'custom') {
-    showEmpty('Tidak ada font kustom', 'Font di luar folder font Windows akan muncul di sini.', null, null);
+    showEmpty(t('Tidak ada font kustom'), t('Font di luar folder font Windows akan muncul di sini.'), null, null);
     return;
   }
   if (state.view === 'adobe') {
     showEmpty(
-      'Tidak ada font Adobe',
-      'Font langganan Adobe Fonts yang aktif di Creative Cloud akan muncul di sini.',
+      t('Tidak ada font Adobe'),
+      t('Font langganan Adobe Fonts yang aktif di Creative Cloud akan muncul di sini.'),
       null,
       null
     );
@@ -1922,17 +1952,19 @@ function renderEmpty() {
   }
   if (state.view === 'system' || state.view === 'user') {
     showEmpty(
-      `Tidak ada ${state.view === 'system' ? 'font sistem' : 'font pengguna'}`,
-      'Coba pindai ulang untuk memperbarui daftar font.',
-      'Pindai ulang',
+      tp('Tidak ada {kind}', {
+        kind: t(state.view === 'system' ? 'font sistem' : 'font pengguna')
+      }),
+      t('Coba pindai ulang untuk memperbarui daftar font.'),
+      t('Pindai ulang'),
       () => loadFonts(true)
     );
     return;
   }
   showEmpty(
-    'Tidak ada font terdeteksi',
-    'Aplikasi tidak menemukan berkas font di folder Windows. Coba pindai ulang.',
-    'Pindai ulang',
+    t('Tidak ada font terdeteksi'),
+    t('Aplikasi tidak menemukan berkas font di folder Windows. Coba pindai ulang.'),
+    t('Pindai ulang'),
     () => loadFonts(true)
   );
 }
@@ -2011,7 +2043,9 @@ function toggleGroupSelection(group) {
   } else if (!addGroupToSelection(group)) {
     toast(
       'warn',
-      `Batas ${fmtNumber(MAX_SELECTION_FILES)} berkas per operasi. Hapus pilihan saat ini dulu.`,
+      tp('Batas {count} berkas per operasi. Hapus pilihan saat ini dulu.', {
+        count: fmtNumber(MAX_SELECTION_FILES)
+      }),
       { timeout: 6500 }
     );
     return;
@@ -2045,10 +2079,14 @@ function selectGroups(groups) {
   updateSelectionUI();
 
   const parts = [];
-  if (added) parts.push(`${fmtNumber(added)} keluarga ditambahkan`);
-  else parts.push('Tidak ada keluarga baru yang dipilih');
-  if (protectedSkipped) parts.push(`${fmtNumber(protectedSkipped)} keluarga inti sistem dilewati`);
-  if (limitSkipped) parts.push(`batas ${fmtNumber(MAX_SELECTION_FILES)} berkas tercapai`);
+  if (added) parts.push(tp('{count} keluarga ditambahkan', { count: fmtNumber(added) }));
+  else parts.push(t('Tidak ada keluarga baru yang dipilih'));
+  if (protectedSkipped) {
+    parts.push(tp('{count} keluarga inti sistem dilewati', { count: fmtNumber(protectedSkipped) }));
+  }
+  if (limitSkipped) {
+    parts.push(tp('batas {count} berkas tercapai', { count: fmtNumber(MAX_SELECTION_FILES) }));
+  }
   toast(added ? 'success' : 'warn', parts.join(' · '), { timeout: 7000 });
 }
 
@@ -2062,7 +2100,7 @@ function selectVisibleGroups() {
 function selectAllResults() {
   const list = computeList();
   if (!list.length) {
-    toast('warn', 'Tidak ada hasil untuk dipilih.');
+    toast('warn', t('Tidak ada hasil untuk dipilih.'));
     return;
   }
   selectGroups(list);
@@ -2091,43 +2129,58 @@ function updateSelectionUI() {
     els.select.disabled = state.view === 'backups';
     els.select.classList.toggle('is-active', active);
     const label = els.select.querySelector('.btn-label');
-    if (label) label.textContent = active ? 'Selesai' : 'Pilih';
+    if (label) label.textContent = active ? t('Selesai') : t('Pilih');
     els.select.title = active
-      ? 'Selesai memilih'
-      : 'Pilih beberapa keluarga font untuk dihapus';
+      ? t('Selesai memilih')
+      : t('Pilih beberapa keluarga font untuk dihapus');
   }
 
   const totals = selectionTotals();
   if (els.selectionCount) {
-    els.selectionCount.textContent = `${fmtNumber(totals.families)} keluarga`;
+    els.selectionCount.textContent = tp('{count} keluarga', { count: fmtNumber(totals.families) });
   }
   if (els.selectionMeta) {
     els.selectionMeta.textContent = totals.families
-      ? `${fmtNumber(totals.files)} berkas · ${fmtBytes(totals.size)}${
-          totals.protectedGroups
-            ? ` · ${fmtNumber(totals.protectedGroups)} inti sistem`
-            : ''
-        }`
-      : 'Pilih keluarga yang akan dihapus';
+      ? tp('{count} berkas · {size}', {
+          count: fmtNumber(totals.files),
+          size: fmtBytes(totals.size)
+        }) +
+        (totals.protectedGroups
+          ? ' ' + tp('· {count} inti sistem', { count: fmtNumber(totals.protectedGroups) })
+          : '')
+      : t('Pilih keluarga yang akan dihapus');
   }
   if (els.deleteSelected) {
     els.deleteSelected.disabled = totals.families === 0;
     els.deleteSelected.textContent = totals.families
-      ? `Hapus ${fmtNumber(totals.files)} berkas`
-      : 'Hapus terpilih';
+      ? tp('Hapus {count} berkas', { count: fmtNumber(totals.files) })
+      : t('Hapus terpilih');
+  }
+  if (els.backupSelected) {
+    const backupable = selectedGroups()
+      .flatMap((group) => group.files)
+      .filter((font) => font.exists).length;
+    els.backupSelected.disabled = backupable === 0;
+    els.backupSelected.textContent = backupable
+      ? tp('Cadangkan {count} berkas', { count: fmtNumber(backupable) })
+      : t('Cadangkan terpilih');
   }
   if (els.clearSelection) els.clearSelection.disabled = totals.families === 0;
 
   const listCount = state.view === 'backups' ? 0 : state.list.length;
   if (els.selectAll) {
     els.selectAll.disabled = !active || listCount === 0;
-    els.selectAll.textContent = `Pilih semua hasil (${fmtNumber(listCount)})`;
-    els.selectAll.title = `Pilih semua hasil; maksimal ${fmtNumber(MAX_SELECTION_FILES)} berkas per operasi`;
+    els.selectAll.textContent = tp('Pilih semua hasil ({count})', { count: fmtNumber(listCount) });
+    els.selectAll.title = tp('Pilih semua hasil; maksimal {count} berkas per operasi', {
+      count: fmtNumber(MAX_SELECTION_FILES)
+    });
   }
   if (els.selectVisible) {
     els.selectVisible.disabled = !active || state.rendered === 0;
-    els.selectVisible.textContent = `Pilih tampil (${fmtNumber(state.rendered)})`;
-    els.selectVisible.title = `Pilih keluarga yang sedang tampil; maksimal ${fmtNumber(MAX_SELECTION_FILES)} berkas`;
+    els.selectVisible.textContent = tp('Pilih tampil ({count})', { count: fmtNumber(state.rendered) });
+    els.selectVisible.title = tp('Pilih keluarga yang sedang tampil; maksimal {count} berkas', {
+      count: fmtNumber(MAX_SELECTION_FILES)
+    });
     els.selectVisible.hidden = state.rendered >= listCount;
   }
 
@@ -2150,7 +2203,7 @@ function createCard(group) {
     class: 'card',
     role: 'button',
     tabindex: '0',
-    'aria-label': `Keluarga ${group.family} — ${group.files.length} berkas`
+    'aria-label': tp('Keluarga {name} — {count} berkas', { name: group.family, count: group.files.length })
   });
   card.dataset.familyKey = group.key;
   card.dataset.id = primary.id;
@@ -2174,8 +2227,8 @@ function createCard(group) {
       type: 'button',
       role: 'checkbox',
       'aria-checked': state.selected.has(group.key) ? 'true' : 'false',
-      'aria-label': `Pilih ${group.family} untuk dihapus`,
-      title: 'Tandai untuk dihapus'
+      'aria-label': tp('Pilih {name} untuk dihapus', { name: group.family }),
+      title: t('Tandai untuk dihapus')
     },
     icon('check')
   );
@@ -2195,7 +2248,7 @@ function createCard(group) {
       el(
         'span',
         { class: 'card-style' },
-        group.files.length > 1 ? `${group.files.length} gaya` : styleLabel(primary, group)
+        group.files.length > 1 ? tp('{count} gaya', { count: group.files.length }) : styleLabel(primary, group)
       )
     )
   );
@@ -2209,39 +2262,43 @@ function createCard(group) {
     el(
       'p',
       { class: 'card-file', title: primary.fileName },
-      group.files.length > 1 ? `${primary.fileName} +${group.files.length - 1} berkas` : primary.fileName
+      group.files.length > 1
+        ? tp('{name} +{count} berkas', { name: primary.fileName, count: group.files.length - 1 })
+        : primary.fileName
     )
   );
 
   const chips = el('div', { class: 'chips' });
   for (const source of ['system', 'user', 'custom', 'adobe']) {
-    if (group.sources.has(source)) chips.append(el('span', { class: `chip ${source}` }, SOURCE_LABELS[source]));
+    if (group.sources.has(source)) chips.append(el('span', { class: `chip ${source}` }, t(SOURCE_LABELS[source])));
   }
   const untracked = group.files.filter((font) => font.trackedOnly).length;
-  if (untracked) chips.append(el('span', { class: 'chip warn' }, `${untracked} tidak terdeteksi`));
-  if (group.files.length > 1) chips.append(el('span', { class: 'chip' }, `${group.files.length} berkas`));
+  if (untracked) chips.append(el('span', { class: 'chip warn' }, tp('{count} tidak terdeteksi', { count: untracked })));
+  if (group.files.length > 1) {
+    chips.append(el('span', { class: 'chip' }, tp('{count} berkas', { count: group.files.length })));
+  }
   if (group.totalSize) chips.append(el('span', { class: 'chip' }, fmtBytes(group.totalSize)));
-  if (group.hasVariable) chips.append(el('span', { class: 'chip var' }, 'Variabel'));
-  if (group.hasCollection) chips.append(el('span', { class: 'chip' }, 'Koleksi'));
-  if (group.hasProtected) chips.append(el('span', { class: 'chip warn' }, 'Inti sistem'));
-  if (missingCount) chips.append(el('span', { class: 'chip danger' }, `${missingCount} hilang`));
-  else if (group.hasOrphan) chips.append(el('span', { class: 'chip warn' }, 'Belum terdaftar'));
+  if (group.hasVariable) chips.append(el('span', { class: 'chip var' }, t('Variabel')));
+  if (group.hasCollection) chips.append(el('span', { class: 'chip' }, t('Koleksi')));
+  if (group.hasProtected) chips.append(el('span', { class: 'chip warn' }, t('Inti sistem')));
+  if (missingCount) chips.append(el('span', { class: 'chip danger' }, tp('{count} hilang', { count: missingCount })));
+  else if (group.hasOrphan) chips.append(el('span', { class: 'chip warn' }, t('Belum terdaftar')));
   info.append(chips);
 
-  const detailBtn = el('button', { class: 'btn-mini', type: 'button', title: 'Lihat semua gaya' }, icon('info'), 'Detail');
+  const detailBtn = el('button', { class: 'btn-mini', type: 'button', title: t('Lihat semua gaya') }, icon('info'), t('Detail'));
   detailBtn.addEventListener('click', (event) => {
     event.stopPropagation();
     openFamilyDrawer(group);
   });
 
-  const revealBtn = el('button', { class: 'btn-mini', type: 'button', title: 'Buka folder font' }, icon('folder'), 'Folder');
+  const revealBtn = el('button', { class: 'btn-mini', type: 'button', title: t('Buka folder font') }, icon('folder'), t('Folder'));
   revealBtn.disabled = !primary.exists;
   revealBtn.addEventListener('click', (event) => {
     event.stopPropagation();
     revealFont(primary, revealBtn);
   });
 
-  const deleteBtn = el('button', { class: 'btn-mini is-danger', type: 'button', title: 'Hapus keluarga font' }, icon('trash'), 'Hapus');
+  const deleteBtn = el('button', { class: 'btn-mini is-danger', type: 'button', title: t('Hapus keluarga font') }, icon('trash'), t('Hapus'));
   deleteBtn.addEventListener('click', (event) => {
     event.stopPropagation();
     confirmDeleteFamily(group);
@@ -2252,10 +2309,10 @@ function createCard(group) {
   const onlyTracked = group.files.every((font) => font.trackedOnly);
   if (onlyTracked) {
     deleteBtn.disabled = true;
-    deleteBtn.title = 'Berkas tidak terdeteksi — hentikan pelacakan dari kartu ini';
+    deleteBtn.title = t('Berkas tidak terdeteksi — hentikan pelacakan dari kartu ini');
   }
   const untrackBtn = onlyTracked
-    ? el('button', { class: 'btn-mini', type: 'button', title: 'Hentikan pelacakan keluarga ini' }, icon('star'), 'Lepas')
+    ? el('button', { class: 'btn-mini', type: 'button', title: t('Hentikan pelacakan keluarga ini') }, icon('star'), t('Lepas'))
     : null;
   if (untrackBtn) {
     untrackBtn.addEventListener('click', async (event) => {
@@ -2272,7 +2329,7 @@ function createCard(group) {
     previewObserver.observe(card);
   } else {
     card.classList.add('is-static');
-    sample.textContent = NO_PREVIEW_LABEL;
+    sample.textContent = t(NO_PREVIEW_LABEL);
   }
 
   card.addEventListener('click', () => {
@@ -2302,7 +2359,7 @@ function updateSamples() {
     const sample = card.querySelector('.sample');
     if (!sample) continue;
     const text = card.classList.contains('is-static')
-      ? NO_PREVIEW_LABEL
+      ? t(NO_PREVIEW_LABEL)
       : previewText(group);
     sample.textContent = text;
     styleCardSample(sample, text);
@@ -2371,7 +2428,7 @@ function closeDrawer() {
 function drawerCloseButton() {
   return el(
     'button',
-    { class: 'icon-btn', type: 'button', 'aria-label': 'Tutup detail', onclick: closeDrawer },
+    { class: 'icon-btn', type: 'button', 'aria-label': t('Tutup detail'), onclick: closeDrawer },
     icon('close')
   );
 }
@@ -2397,10 +2454,10 @@ function buildFamilyDrawer(group) {
 
   const eyebrow = el('div', { class: 'drawer-eyebrow' });
   for (const source of ['system', 'user', 'custom', 'adobe']) {
-    if (group.sources.has(source)) eyebrow.append(el('span', { class: `chip ${source}` }, SOURCE_LABELS[source]));
+    if (group.sources.has(source)) eyebrow.append(el('span', { class: `chip ${source}` }, t(SOURCE_LABELS[source])));
   }
   for (const format of group.formats) eyebrow.append(el('span', { class: 'chip' }, format));
-  eyebrow.append(el('span', { class: 'chip' }, `${files.length} berkas`));
+  eyebrow.append(el('span', { class: 'chip' }, tp('{count} berkas', { count: files.length })));
 
   const header = el(
     'div',
@@ -2424,7 +2481,7 @@ function buildFamilyDrawer(group) {
   for (const [line, max] of [[lineSmall, 18], [lineMid, 32], [lineBig, 52]]) line.dataset.max = String(max);
   state.drawerLines = [lineSmall, lineMid, lineBig];
   stylePreviewLines(state.drawerLines, lineText);
-  const note = el('div', { class: 'preview-note' }, 'Pratinjau nama font');
+  const note = el('div', { class: 'preview-note' }, t('Pratinjau nama font'));
   body.append(el('div', { class: 'drawer-preview' }, lineSmall, lineMid, lineBig, note));
 
   if (previewables.length > 1) {
@@ -2459,27 +2516,47 @@ function buildFamilyDrawer(group) {
         el(
           'div',
           { class: 'drawer-section' },
-          el('h4', {}, `Pilih gaya untuk pratinjau (${styleEntries.length})`),
+          el('h4', {}, tp('Pilih gaya untuk pratinjau ({count})', { count: styleEntries.length })),
           pills
         )
       );
     }
   }
 
-  const trackBtn = el('button', { class: `btn ${group.allTracked ? 'primary' : 'ghost'}`, type: 'button' }, icon('star'), group.allTracked ? 'Dilacak' : 'Lacak keluarga');
+  const trackBtn = el('button', { class: `btn ${group.allTracked ? 'primary' : 'ghost'}`, type: 'button' }, icon('star'), group.allTracked ? t('Dilacak') : t('Lacak keluarga'));
   trackBtn.addEventListener('click', () => toggleFamilyTrack(group));
   state.familyTrackBtn = trackBtn;
 
   const actions = el('div', { class: 'drawer-actions' }, trackBtn);
 
-  const revealBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('folder'), 'Buka folder');
+  const revealBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('folder'), t('Buka folder'));
   revealBtn.disabled = !group.primary.exists;
   revealBtn.addEventListener('click', () => revealFont(group.primary, revealBtn));
   actions.append(revealBtn);
 
-  const deleteBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('trash'), 'Hapus keluarga');
+  const deleteBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('trash'), t('Hapus keluarga'));
   deleteBtn.addEventListener('click', () => confirmDeleteFamily(group));
   actions.append(deleteBtn);
+
+  // Cadangan khusus untuk famili font langganan: berkasnya bisa hilang
+  // begitu langganan Creative Cloud berakhir, jadi salinan mandiri berguna.
+  if (group.sources.has('adobe')) {
+    const familyBackupBtn = el(
+      'button',
+      { class: 'btn ghost', type: 'button', title: t('Cadangkan semua berkas Adobe Fonts dalam famili ini') },
+      icon('archive'),
+      t('Cadangkan')
+    );
+    familyBackupBtn.disabled = !group.files.some((font) => font.exists);
+    familyBackupBtn.addEventListener('click', () =>
+      backupFonts(
+        group.files.filter((font) => font.exists),
+        familyBackupBtn
+      )
+    );
+    actions.append(familyBackupBtn);
+  }
+
   body.append(actions);
 
   if (group.hasProtected) {
@@ -2488,7 +2565,7 @@ function buildFamilyDrawer(group) {
         'div',
         { class: 'notice danger' },
         icon('alert'),
-        el('div', {}, 'Keluarga ini berisi font inti Windows. Menghapusnya dapat membuat antarmuka Windows tidak terbaca.')
+        el('div', {}, t('Keluarga ini berisi font inti Windows. Menghapusnya dapat membuat antarmuka Windows tidak terbaca.'))
       )
     );
   }
@@ -2508,55 +2585,55 @@ function buildFamilyDrawer(group) {
         'div',
         { class: 'notice' },
         icon('info'),
-        el('div', {}, 'Sebagian berkas ada di folder font tetapi belum terdaftar di registri Windows.')
+        el('div', {}, t('Sebagian berkas ada di folder font tetapi belum terdaftar di registri Windows.'))
       )
     );
   }
 
   const allMissing = missingCount === files.length;
   const infoRows = [
-    ['Keluarga', group.family],
-    ['Jumlah berkas', `${files.length} berkas`],
-    ['Gaya', Array.from(group.styles).join(', ') || '—'],
-    ['Total ukuran', fmtBytes(group.totalSize)],
-    ['Sumber', Array.from(group.sources).map((source) => SOURCE_LABELS[source] || source).join(' + ')],
-    ['Format', Array.from(group.formats).join(', ') || '—'],
+    [t('Keluarga'), group.family],
+    [t('Jumlah berkas'), tp('{count} berkas', { count: files.length })],
+    [t('Gaya'), Array.from(group.styles).join(', ') || '—'],
+    [t('Total ukuran'), fmtBytes(group.totalSize)],
+    [t('Sumber'), Array.from(group.sources).map((source) => t(SOURCE_LABELS[source]) || source).join(' + ')],
+    [t('Format'), Array.from(group.formats).join(', ') || '—'],
     [
-      'Status',
+      t('Status'),
       allMissing
-        ? 'Semua berkas hilang'
+        ? t('Semua berkas hilang')
         : missingCount
           ? `${missingCount} berkas hilang`
-          : 'Semua berkas tersedia'
+          : t('Semua berkas tersedia')
     ]
   ];
 
   const adobeUrl = (group.files.find((font) => font.adobeUrl) || {}).adobeUrl;
   if (adobeUrl) {
     infoRows.push([
-      'Tautan',
+      t('Tautan'),
       el(
         'a',
         { class: 'adobe-link', href: adobeUrl, target: '_blank', rel: 'noreferrer noopener', onclick: (event) => event.stopPropagation() },
-        'Lihat di fonts.adobe.com'
+        t('Lihat di fonts.adobe.com')
       )
     ]);
   }
 
-  const info = el('div', { class: 'drawer-section' }, el('h4', {}, 'Informasi keluarga'));
+  const info = el('div', { class: 'drawer-section' }, el('h4', {}, t('Informasi keluarga')));
   const dl = el('dl', { class: 'kv' });
   for (const [label, value] of infoRows) dl.append(el('dt', {}, label), el('dd', {}, value));
   info.append(dl);
   body.append(info);
 
-  const listSection = el('div', { class: 'drawer-section' }, el('h4', {}, `Berkas dalam keluarga (${files.length})`));
+  const listSection = el('div', { class: 'drawer-section' }, el('h4', {}, tp('Berkas dalam keluarga ({count})', { count: files.length })));
   const list = el('div', { class: 'family-files' });
 
   for (const font of files) {
     const label = styleLabel(font, group);
     const detailBtn = el(
       'button',
-      { class: 'btn-mini', type: 'button', title: 'Lihat detail berkas', 'aria-label': `Detail ${font.fileName}` },
+      { class: 'btn-mini', type: 'button', title: t('Lihat detail berkas'), 'aria-label': tp('Detail {name}', { name: font.fileName }) },
       icon('info')
     );
     detailBtn.addEventListener('click', (event) => {
@@ -2566,7 +2643,7 @@ function buildFamilyDrawer(group) {
 
     const revealBtnRow = el(
       'button',
-      { class: 'btn-mini', type: 'button', title: 'Buka folder font', 'aria-label': `Buka folder ${font.fileName}` },
+      { class: 'btn-mini', type: 'button', title: t('Buka folder font'), 'aria-label': tp('Buka folder {name}', { name: font.fileName }) },
       icon('folder')
     );
     revealBtnRow.disabled = !font.exists;
@@ -2577,7 +2654,7 @@ function buildFamilyDrawer(group) {
 
     const deleteBtnRow = el(
       'button',
-      { class: 'btn-mini is-danger', type: 'button', title: 'Hapus berkas ini', 'aria-label': `Hapus ${font.fileName}` },
+      { class: 'btn-mini is-danger', type: 'button', title: t('Hapus berkas ini'), 'aria-label': tp('Hapus {name}', { name: font.fileName }) },
       icon('trash')
     );
     deleteBtnRow.addEventListener('click', (event) => {
@@ -2586,11 +2663,11 @@ function buildFamilyDrawer(group) {
     });
 
     const meta = [
-      SOURCE_LABELS[font.source] || font.source,
+      t(SOURCE_LABELS[font.source]) || font.source,
       fmtBytes(font.size),
-      font.exists ? null : 'hilang',
-      font.protected ? 'inti sistem' : null,
-      font.isVariable ? 'variabel' : null
+      font.exists ? null : t('hilang'),
+      font.protected ? t('inti sistem') : null,
+      font.isVariable ? t('variabel') : null
     ]
       .filter(Boolean)
       .join(' · ');
@@ -2644,12 +2721,17 @@ function loadFamilyPreview(group) {
       line.style.fontSize = '13px';
       line.style.opacity = '1';
     }
-    if (note) note.textContent = 'Berkas font ini tidak tersedia untuk pratinjau.';
+    if (note) note.textContent = t('Berkas font ini tidak tersedia untuk pratinjau.');
     panel.classList.add('is-loaded');
     return;
   }
 
-  if (note) note.textContent = `Pratinjau ${styleLabel(font, group)} · ${font.fileName}`;
+  if (note) {
+    note.textContent = tp('Pratinjau {style} · {file}', {
+      style: styleLabel(font, group),
+      file: font.fileName
+    });
+  }
 
   ensureFace(font.id).then((ok) => {
     if (state.activeFamilyKey !== group.key || state.familyPreviewId !== font.id) return;
@@ -2657,7 +2739,7 @@ function loadFamilyPreview(group) {
     if (ok) {
       for (const line of lines) line.style.fontFamily = `fm-${font.id}`;
     } else if (note) {
-      note.textContent = 'Browser tidak dapat memuat pratinjau berkas font ini.';
+      note.textContent = t('Browser tidak dapat memuat pratinjau berkas font ini.');
     }
   });
 }
@@ -2712,8 +2794,8 @@ function buildDrawer(font, loading, options = {}) {
         {
           class: 'icon-btn',
           type: 'button',
-          title: 'Kembali ke keluarga',
-          'aria-label': 'Kembali ke keluarga',
+          title: t('Kembali ke keluarga'),
+          'aria-label': t('Kembali ke keluarga'),
           onclick: () => {
             const group = state.familyByKey.get(options.backToFamily);
             if (group) openFamilyDrawer(group);
@@ -2737,11 +2819,11 @@ function buildDrawer(font, loading, options = {}) {
         el(
           'div',
           { class: 'drawer-eyebrow' },
-          el('span', { class: `chip ${font.source}` }, font.sourceLabel || SOURCE_LABELS[font.source] || font.source),
+          el('span', { class: `chip ${font.source}` }, font.sourceLabel || t(SOURCE_LABELS[font.source]) || font.source),
           el('span', { class: 'chip' }, font.format),
-          fileStyle && fileStyle !== 'Regular' ? el('span', { class: 'chip' }, fileStyle) : null,
-          font.protected ? el('span', { class: 'chip warn' }, 'Inti sistem') : null,
-          !font.exists ? el('span', { class: 'chip danger' }, 'Berkas hilang') : null
+          fileStyle && fileStyle !== t('Regular') ? el('span', { class: 'chip' }, fileStyle) : null,
+          font.protected ? el('span', { class: 'chip warn' }, t('Inti sistem')) : null,
+          !font.exists ? el('span', { class: 'chip danger' }, t('Berkas hilang')) : null
         ),
         el('h2', {}, label),
         el('p', {}, font.fileName)
@@ -2761,7 +2843,7 @@ function buildDrawer(font, loading, options = {}) {
   const note = el(
     'div',
     { class: 'preview-note' },
-    font.previewable ? `Pratinjau ${fileStyle}` : 'Berkas ini tidak dapat dipratinjau.'
+    font.previewable ? tp('Pratinjau {style}', { style: fileStyle }) : t('Berkas ini tidak dapat dipratinjau.')
   );
   state.drawerLines = [lineSmall, lineMid, lineBig];
   body.append(el('div', { class: 'drawer-preview' }, lineSmall, lineMid, lineBig, note));
@@ -2771,19 +2853,23 @@ function buildDrawer(font, loading, options = {}) {
     'button',
     { class: `btn ${tracked ? 'primary' : 'ghost'}`, type: 'button' },
     icon('star'),
-    tracked ? 'Dilacak' : 'Lacak font'
+    tracked ? t('Dilacak') : t('Lacak font')
   );
   trackBtn.addEventListener('click', () => toggleTrack(font, trackBtn));
   state.trackBtn = trackBtn;
 
-  const revealBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('folder'), 'Buka folder');
+  const revealBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('folder'), t('Buka folder'));
   revealBtn.disabled = !font.exists;
   revealBtn.addEventListener('click', () => revealFont(font, revealBtn));
 
-  const deleteBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('trash'), 'Hapus berkas');
+  const backupBtn = el('button', { class: 'btn ghost', type: 'button', title: t('Simpan salinan cadangan font ini') }, icon('archive'), t('Cadangkan'));
+  backupBtn.disabled = !font.exists;
+  backupBtn.addEventListener('click', () => backupFonts([font], backupBtn));
+
+  const deleteBtn = el('button', { class: 'btn ghost', type: 'button' }, icon('trash'), t('Hapus berkas'));
   deleteBtn.addEventListener('click', () => confirmDelete(font));
 
-  body.append(el('div', { class: 'drawer-actions' }, trackBtn, revealBtn, deleteBtn));
+  body.append(el('div', { class: 'drawer-actions' }, trackBtn, revealBtn, backupBtn, deleteBtn));
 
   if (font.protected) {
     body.append(
@@ -2791,7 +2877,7 @@ function buildDrawer(font, loading, options = {}) {
         'div',
         { class: 'notice danger' },
         icon('alert'),
-        el('div', {}, 'Font ini termasuk font inti Windows. Menghapusnya dapat membuat antarmuka Windows tidak terbaca.')
+        el('div', {}, t('Font ini termasuk font inti Windows. Menghapusnya dapat membuat antarmuka Windows tidak terbaca.'))
       )
     );
   }
@@ -2804,7 +2890,7 @@ function buildDrawer(font, loading, options = {}) {
         el(
           'div',
           {},
-          'Font langganan Adobe Fonts. Menghapus berkas ini mencabut aktivasi lokalnya; aktivasi kembali lewat aplikasi Creative Cloud.'
+          t('Font langganan Adobe Fonts. Menghapus berkas ini mencabut aktivasi lokalnya; aktivasi kembali lewat aplikasi Creative Cloud.')
         )
       )
     );
@@ -2815,39 +2901,39 @@ function buildDrawer(font, loading, options = {}) {
         'div',
         { class: 'notice' },
         icon('alert'),
-        el('div', {}, 'Berkas font tidak ditemukan. Anda masih dapat membersihkan entri registrinya.')
+        el('div', {}, t('Berkas font tidak ditemukan. Anda masih dapat membersihkan entri registrinya.'))
       )
     );
   }
 
   const infoRows = [
-    ['Nama lengkap', label],
-    ['Gaya', fileStyle || '—'],
-    ['Berat', `${font.weightName || '—'} (${font.weightClass || '—'})`],
-    ['Jenis berkas', font.format],
-    ['Ukuran', fmtBytes(font.size)],
-    ['Diubah', fmtDateTime(font.modifiedAt)],
-    ['Sumber', font.sourceLabel || SOURCE_LABELS[font.source] || font.source],
-    ['Hak sematan', font.embedding || 'Tidak diketahui'],
+    [t('Nama lengkap'), label],
+    [t('Gaya'), fileStyle || '—'],
+    [t('Berat'), `${font.weightName || '—'} (${font.weightClass || '—'})`],
+    [t('Jenis berkas'), font.format],
+    [t('Ukuran'), fmtBytes(font.size)],
+    [t('Diubah'), fmtDateTime(font.modifiedAt)],
+    [t('Sumber'), font.sourceLabel || t(SOURCE_LABELS[font.source]) || font.source],
+    [t('Hak sematan'), font.embedding || t('Tidak diketahui')],
     [
-      'Status',
+      t('Status'),
       font.trackedOnly
-        ? 'Tidak terdeteksi saat pindai terakhir'
+        ? t('Tidak terdeteksi saat pindai terakhir')
         : font.exists
           ? font.source === 'adobe'
-            ? 'Aktif via Adobe Creative Cloud'
+            ? t('Aktif via Adobe Creative Cloud')
             : font.registered
-              ? 'Terdaftar di registri'
-              : 'Tidak terdaftar'
-          : 'Berkas hilang'
+              ? t('Terdaftar di registri')
+              : t('Tidak terdaftar')
+          : t('Berkas hilang')
     ]
   ];
-  if (font.isVariable) infoRows.push(['Variabel', 'Ya — mendukung beberapa ketebalan']);
-  if (font.isCollection) infoRows.push(['Wajah dalam koleksi', `${font.collectionCount} wajah`]);
+  if (font.isVariable) infoRows.push([t('Variabel'), t('Ya — mendukung beberapa ketebalan')]);
+  if (font.isCollection) infoRows.push([t('Wajah dalam koleksi'), `${font.collectionCount} wajah`]);
   if (font.psName) infoRows.push(['Nama PostScript', font.psName]);
   if (font.adobeUrl) {
     infoRows.push([
-      'Tautan',
+      t('Tautan'),
       el(
         'a',
         {
@@ -2857,21 +2943,21 @@ function buildDrawer(font, loading, options = {}) {
           rel: 'noreferrer noopener',
           onclick: (event) => event.stopPropagation()
         },
-        'Lihat di fonts.adobe.com'
+        t('Lihat di fonts.adobe.com')
       )
     ]);
   }
 
-  const info = el('div', { class: 'drawer-section' }, el('h4', {}, 'Informasi font'));
+  const info = el('div', { class: 'drawer-section' }, el('h4', {}, t('Informasi font')));
   const dl = el('dl', { class: 'kv' });
   for (const [label, value] of infoRows) dl.append(el('dt', {}, label), el('dd', {}, value));
   info.append(dl);
   body.append(info);
 
-  const pathSection = el('div', { class: 'drawer-section' }, el('h4', {}, 'Lokasi berkas'));
+  const pathSection = el('div', { class: 'drawer-section' }, el('h4', {}, t('Lokasi berkas')));
   const copyBtn = el(
     'button',
-    { class: 'copy-btn', type: 'button', title: 'Salin path', 'aria-label': 'Salin path' },
+    { class: 'copy-btn', type: 'button', title: t('Salin path'), 'aria-label': t('Salin path') },
     icon('copy')
   );
   copyBtn.addEventListener('click', () => copyToClipboard(font.filePath));
@@ -2879,7 +2965,7 @@ function buildDrawer(font, loading, options = {}) {
   body.append(pathSection);
 
   if (font.faces && font.faces.length > 1) {
-    const facesSection = el('div', { class: 'drawer-section' }, el('h4', {}, 'Wajah font dalam berkas'));
+    const facesSection = el('div', { class: 'drawer-section' }, el('h4', {}, t('Wajah font dalam berkas')));
     for (const face of font.faces) {
       facesSection.append(
         el(
@@ -2893,16 +2979,16 @@ function buildDrawer(font, loading, options = {}) {
     body.append(facesSection);
   }
 
-  const registrySection = el('div', { class: 'drawer-section' }, el('h4', {}, 'Entri registri'));
+  const registrySection = el('div', { class: 'drawer-section' }, el('h4', {}, t('Entri registri')));
   if (loading) {
-    registrySection.append(el('p', { style: { fontSize: '12px', color: 'var(--muted-2)' } }, 'Memuat detail registri…'));
+    registrySection.append(el('p', { style: { fontSize: '12px', color: 'var(--muted-2)' } }, t('Memuat detail registri…')));
   } else if (Array.isArray(font.registry) && font.registry.length) {
     for (const entry of font.registry) {
       registrySection.append(
         el(
           'div',
           { class: 'registry-item' },
-          el('em', {}, entry.root === 'HKLM' ? 'HKLM · semua pengguna' : 'HKCU · akun ini'),
+          el('em', {}, entry.root === 'HKLM' ? t('HKLM · semua pengguna') : t('HKCU · akun ini')),
           `${entry.name} = ${entry.value}`
         )
       );
@@ -2913,8 +2999,8 @@ function buildDrawer(font, loading, options = {}) {
         'p',
         { style: { fontSize: '12px', color: 'var(--muted-2)' } },
         Array.isArray(font.registry)
-          ? 'Tidak ada entri registri untuk berkas ini.'
-          : 'Detail registri tidak tersedia.'
+          ? t('Tidak ada entri registri untuk berkas ini.')
+          : t('Detail registri tidak tersedia.')
       )
     );
   }
@@ -2935,7 +3021,7 @@ function loadDrawerPreview(font) {
       panel.classList.add('is-loaded');
     } else {
       panel.classList.add('is-loaded');
-      if (note) note.textContent = 'Browser tidak dapat memuat pratinjau berkas font ini.';
+      if (note) note.textContent = t('Browser tidak dapat memuat pratinjau berkas font ini.');
     }
   });
 }
@@ -2943,7 +3029,7 @@ function loadDrawerPreview(font) {
 async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
-    toast('success', 'Path disalin ke papan klip.', { timeout: 2000 });
+    toast('success', t('Path disalin ke papan klip.'), { timeout: 2000 });
     return;
   } catch {
     /* fallback di bawah */
@@ -2954,9 +3040,9 @@ async function copyToClipboard(text) {
   area.select();
   try {
     document.execCommand('copy');
-    toast('success', 'Path disalin ke papan klip.', { timeout: 2000 });
+    toast('success', t('Path disalin ke papan klip.'), { timeout: 2000 });
   } catch {
-    toast('error', 'Gagal menyalin path.');
+    toast('error', t('Gagal menyalin path.'));
   }
   area.remove();
 }
@@ -2965,9 +3051,9 @@ async function revealFont(font, btn) {
   if (btn) btn.disabled = true;
   try {
     await api(`/api/fonts/${font.id}/reveal`, { method: 'POST' });
-    toast('info', 'Folder font dibuka di Explorer.', { timeout: 2200 });
+    toast('info', t('Folder font dibuka di Explorer.'), { timeout: 2200 });
   } catch (error) {
-    toast('error', 'Gagal membuka folder: ' + error.message);
+    toast('error', tp('Gagal membuka folder: {error}', { error: error.message }));
   } finally {
     if (btn && btn.isConnected) btn.disabled = false;
   }
@@ -2984,10 +3070,10 @@ function setFamilyStar(btn, group) {
   btn.classList.toggle('is-partial', !group.allTracked && group.anyTracked);
   btn.setAttribute('aria-pressed', group.allTracked ? 'true' : 'false');
   btn.title = group.allTracked
-    ? 'Hentikan pelacakan keluarga'
+    ? t('Hentikan pelacakan keluarga')
     : group.anyTracked
-      ? 'Lacak semua gaya dalam keluarga'
-      : 'Lacak keluarga';
+      ? t('Lacak semua gaya dalam keluarga')
+      : t('Lacak keluarga');
 }
 
 function updateCardStar(card) {
@@ -3002,7 +3088,7 @@ function paintTrackButton(btn, tracked, idleLabel) {
   if (!btn || !btn.isConnected) return;
   btn.className = `btn ${tracked ? 'primary' : 'ghost'}`;
   btn.innerHTML = '';
-  btn.append(icon('star'), tracked ? 'Dilacak' : idleLabel);
+  btn.append(icon('star'), tracked ? t('Dilacak') : idleLabel);
 }
 
 async function toggleTrack(font, btn) {
@@ -3040,17 +3126,17 @@ async function toggleTrack(font, btn) {
     } else {
       for (const card of $$('.card', els.grid)) updateCardStar(card);
     }
-    paintTrackButton(btn, !tracked, 'Lacak font');
+    paintTrackButton(btn, !tracked, t('Lacak font'));
 
     toast(
       'success',
       tracked
-        ? `Pelacakan ${fontLabel(font)} dihentikan.`
-        : `${fontLabel(font)} ditambahkan ke daftar dilacak.`,
+        ? tp('Pelacakan {name} dihentikan.', { name: fontLabel(font) })
+        : tp('{name} ditambahkan ke daftar dilacak.', { name: fontLabel(font) }),
       { timeout: 2600 }
     );
   } catch (error) {
-    toast('error', 'Gagal memperbarui pelacakan: ' + error.message);
+    toast('error', tp('Gagal memperbarui pelacakan: {error}', { error: error.message }));
   } finally {
     state.trackBusy.delete(font.id);
     if (btn instanceof HTMLElement && btn.isConnected) btn.disabled = false;
@@ -3105,17 +3191,20 @@ async function toggleFamilyTrack(group) {
     } else {
       for (const card of $$('.card', els.grid)) updateCardStar(card);
     }
-    paintTrackButton(state.familyTrackBtn, group.allTracked, 'Lacak keluarga');
+    paintTrackButton(state.familyTrackBtn, group.allTracked, t('Lacak keluarga'));
 
     toast(
       'success',
       tracked
-        ? `${group.family} dilacak — ${group.files.length} berkas gaya sekaligus.`
-        : `Pelacakan ${group.family} dihentikan.`,
+        ? tp('{name} dilacak — {count} berkas gaya sekaligus.', {
+            name: group.family,
+            count: group.files.length
+          })
+        : tp('Pelacakan {name} dihentikan.', { name: group.family }),
       { timeout: 3200 }
     );
   } catch (error) {
-    toast('error', 'Gagal memperbarui pelacakan: ' + error.message);
+    toast('error', tp('Gagal memperbarui pelacakan: {error}', { error: error.message }));
   } finally {
     state.familyTrackBusy.delete(group.key);
   }
@@ -3150,7 +3239,7 @@ function confirmDelete(font) {
         'div',
         { class: 'notice' },
         icon('alert'),
-        el('div', {}, 'Berkas font sudah tidak ada. Tindakan ini hanya membersihkan entri registri yang tersisa.')
+        el('div', {}, t('Berkas font sudah tidak ada. Tindakan ini hanya membersihkan entri registri yang tersisa.'))
       )
     );
   }
@@ -3164,7 +3253,7 @@ function confirmDelete(font) {
         el(
           'div',
           {},
-          'Font ini termasuk font inti Windows. Menghapusnya dapat membuat teks antarmuka, menu, atau pengaturan tidak terbaca. Hanya lanjutkan jika Anda benar-benar yakin.'
+          t('Font ini termasuk font inti Windows. Menghapusnya dapat membuat teks antarmuka, menu, atau pengaturan tidak terbaca. Hanya lanjutkan jika Anda benar-benar yakin.')
         )
       )
     );
@@ -3178,7 +3267,7 @@ function confirmDelete(font) {
         'label',
         { class: 'check-row' },
         backupCheck,
-        el('span', {}, 'Cadangkan berkas font sebelum dihapus (dapat dipulihkan dari tab Cadangan).')
+        el('span', {}, t('Cadangkan berkas font sebelum dihapus (dapat dipulihkan dari tab Cadangan).'))
       )
     );
   }
@@ -3189,7 +3278,7 @@ function confirmDelete(font) {
         'div',
         { class: 'notice' },
         icon('info'),
-        el('div', {}, 'Font sistem memerlukan izin Administrator. Jendela UAC akan muncul — setujui untuk melanjutkan.')
+        el('div', {}, t('Font sistem memerlukan izin Administrator. Jendela UAC akan muncul — setujui untuk melanjutkan.'))
       )
     );
   }
@@ -3202,7 +3291,7 @@ function confirmDelete(font) {
         'label',
         { class: 'check-row' },
         riskCheck,
-        el('span', {}, 'Saya mengerti risikonya dan tetap ingin menghapus font ini.')
+        el('span', {}, t('Saya mengerti risikonya dan tetap ingin menghapus font ini.'))
       )
     );
   }
@@ -3211,7 +3300,7 @@ function confirmDelete(font) {
     'button',
     { class: 'btn danger', type: 'button', disabled: isProtected },
     icon('trash'),
-    hasFile ? 'Hapus font' : 'Bersihkan entri'
+    hasFile ? t('Hapus font') : t('Bersihkan entri')
   );
 
   if (riskCheck) {
@@ -3221,13 +3310,13 @@ function confirmDelete(font) {
   }
 
   let closeModal;
-  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', onclick: () => closeModal() }, 'Batal');
+  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', onclick: () => closeModal() }, t('Batal'));
 
   closeModal = openModal({
-    title: hasFile ? 'Hapus font ini?' : 'Bersihkan entri registri?',
+    title: hasFile ? t('Hapus font ini?') : t('Bersihkan entri registri?'),
     subtitle: hasFile
-      ? 'Font akan dihapus dari Windows. Cadangan disimpan secara lokal agar bisa dipulihkan.'
-      : 'Entri registri akan dihapus tanpa menyentuh berkas lain.',
+      ? t('Font akan dihapus dari Windows. Cadangan disimpan secara lokal agar bisa dipulihkan.')
+      : t('Entri registri akan dihapus tanpa menyentuh berkas lain.'),
     content,
     footer: [cancelBtn, deleteBtn]
   });
@@ -3240,9 +3329,9 @@ function confirmDelete(font) {
     const label = fontLabel(font);
     const progressId = newProgressId();
     const task = openTask({
-      title: hasFile ? `Menghapus ${label}` : `Membersihkan ${label}`,
+      title: hasFile ? tp('Menghapus {name}', { name: label }) : tp('Membersihkan {name}', { name: label }),
       subtitle: `${font.fileName} · ${fmtBytes(font.size)}`,
-      hint: 'Jika jendela UAC muncul, setujui untuk melanjutkan.',
+      hint: t('Jika jendela UAC muncul, setujui untuk melanjutkan.'),
       rows: [{ name: font.fileName || label, meta: font.subfamily || '' }]
     });
     task.indeterminate('1 berkas');
@@ -3262,13 +3351,13 @@ function confirmDelete(font) {
       if (!data) throw new Error(`HTTP ${response.status}`);
 
       if (data.ok) {
-        task.markAll('done', hasFile ? 'Dihapus' : 'Dibersihkan');
+        task.markAll('done', hasFile ? t('Dihapus') : t('Dibersihkan'));
         task.finish({
-          title: 'Penghapusan selesai',
+          title: t('Penghapusan selesai'),
           subtitle: data.cleaned
             ? `${label} dibersihkan dari daftar pelacakan.`
             : `${label} berhasil dihapus${data.backup ? ' · cadangan tersimpan di tab Cadangan' : ''}.`,
-          hint: 'Daftar font sudah diperbarui.',
+          hint: t('Daftar font sudah diperbarui.'),
           tone: 'done'
         });
         toast(
@@ -3279,40 +3368,44 @@ function confirmDelete(font) {
           { timeout: 5000 }
         );
       } else if (data.canceled) {
-        task.markAll('pending', 'Dibatalkan');
+        task.markAll('pending', t('Dibatalkan'));
         task.finish({
-          title: 'Dibatalkan',
-          subtitle: data.error || 'Penghapusan dibatalkan; tidak ada perubahan.',
+          title: t('Dibatalkan'),
+          subtitle: data.error || t('Penghapusan dibatalkan; tidak ada perubahan.'),
           hint: '',
           tone: 'warn',
           autoClose: false
         });
-        toast('warn', data.error || 'Penghapusan dibatalkan.', { timeout: 6000 });
+        toast('warn', data.error || t('Penghapusan dibatalkan.'), { timeout: 6000 });
       } else {
-        task.markAll('fail', 'Gagal');
+        task.markAll('fail', t('Gagal'));
         task.finish({
-          title: 'Penghapusan tidak selesai',
-          subtitle: data.error || 'Kesalahan tidak diketahui.',
+          title: t('Penghapusan tidak selesai'),
+          subtitle: data.error || t('Kesalahan tidak diketahui.'),
           hint: '',
           tone: 'fail',
           autoClose: false
         });
-        toast('error', 'Penghapusan tidak selesai: ' + (data.error || 'kesalahan tidak diketahui'), {
-          timeout: 10000
-        });
+        toast(
+          'error',
+          tp('Penghapusan tidak selesai: {error}', {
+            error: data.error || t('kesalahan tidak diketahui')
+          }),
+          { timeout: 10000 }
+        );
       }
       await loadFonts(true);
       await loadBackups(true);
     } catch (error) {
-      task.markAll('fail', 'Gagal');
+      task.markAll('fail', t('Gagal'));
       task.finish({
-        title: 'Gagal menghapus',
+        title: t('Gagal menghapus'),
         subtitle: error.message,
-        hint: 'Tidak ada perubahan yang dikonfirmasi server.',
+        hint: t('Tidak ada perubahan yang dikonfirmasi server.'),
         tone: 'fail',
         autoClose: false
       });
-      toast('error', 'Gagal menghapus font: ' + error.message, { timeout: 8000 });
+      toast('error', tp('Gagal menghapus font: {error}', { error: error.message }), { timeout: 8000 });
     } finally {
       stopPoll();
     }
@@ -3365,7 +3458,7 @@ function confirmDeleteFamily(group) {
         el(
           'div',
           {},
-          'Keluarga ini berisi font inti Windows. Menghapus seluruh keluarga dapat membuat teks antarmuka Windows tidak terbaca.'
+          t('Keluarga ini berisi font inti Windows. Menghapus seluruh keluarga dapat membuat teks antarmuka Windows tidak terbaca.')
         )
       )
     );
@@ -3393,7 +3486,7 @@ function confirmDeleteFamily(group) {
         'label',
         { class: 'check-row' },
         backupCheck,
-        el('span', {}, `Cadangkan ${existing.length} berkas sebelum dihapus (satu operasi, dapat dipulihkan dari tab Cadangan).`)
+        el('span', {}, tp('Cadangkan {count} berkas sebelum dihapus (satu operasi, dapat dipulihkan dari tab Cadangan).', { count: existing.length }))
       )
     );
     content.append(
@@ -3401,7 +3494,7 @@ function confirmDeleteFamily(group) {
         'div',
         { class: 'notice' },
         icon('info'),
-        el('div', {}, 'Semua berkas dihapus dalam satu operasi. Jika ada font sistem, satu jendela UAC akan muncul.')
+        el('div', {}, t('Semua berkas dihapus dalam satu operasi. Jika ada font sistem, satu jendela UAC akan muncul.'))
       )
     );
 
@@ -3413,7 +3506,7 @@ function confirmDeleteFamily(group) {
           'label',
           { class: 'check-row' },
           riskCheck,
-          el('span', {}, 'Saya mengerti risikonya dan tetap ingin menghapus seluruh keluarga ini.')
+          el('span', {}, t('Saya mengerti risikonya dan tetap ingin menghapus seluruh keluarga ini.'))
         )
       );
     }
@@ -3422,7 +3515,7 @@ function confirmDeleteFamily(group) {
       'button',
       { class: 'btn danger', type: 'button', disabled: isProtected },
       icon('trash'),
-      `Hapus ${existing.length} berkas`
+      tp('Hapus {count} berkas', { count: existing.length })
     );
 
     if (riskCheck) {
@@ -3432,11 +3525,11 @@ function confirmDeleteFamily(group) {
     }
 
     let closeModal;
-    const cancelBtn = el('button', { class: 'btn ghost', type: 'button', onclick: () => closeModal() }, 'Batal');
+    const cancelBtn = el('button', { class: 'btn ghost', type: 'button', onclick: () => closeModal() }, t('Batal'));
 
     closeModal = openModal({
-      title: `Hapus keluarga ${group.family}?`,
-      subtitle: 'Seluruh berkas dan entri registri keluarga ini akan dihapus dari Windows.',
+      title: tp('Hapus keluarga {name}?', { name: group.family }),
+      subtitle: t('Seluruh berkas dan entri registri keluarga ini akan dihapus dari Windows.'),
       content,
       footer: [cancelBtn, deleteBtn]
     });
@@ -3448,15 +3541,15 @@ function confirmDeleteFamily(group) {
       const progressId = newProgressId();
       const rowIndexByFontId = new Map(files.map((font, index) => [font.id, index]));
       const task = openTask({
-        title: `Menghapus ${group.family}`,
-        subtitle: `${fmtNumber(existing.length)} berkas · menyiapkan cadangan…`,
-        hint: 'Jangan tutup jendela. Jika jendela UAC muncul, setujui untuk melanjutkan.',
+        title: tp('Menghapus {name}', { name: group.family }),
+        subtitle: tp('{count} berkas · menyiapkan cadangan…', { count: fmtNumber(existing.length) }),
+        hint: t('Jangan tutup jendela. Jika jendela UAC muncul, setujui untuk melanjutkan.'),
         rows: files.map((font) => ({
           name: font.fileName || fontLabel(font),
           meta: font.subfamily || ''
         }))
       });
-      task.indeterminate(`${fmtNumber(existing.length)} berkas`);
+      task.indeterminate(tp('{count} berkas', { count: fmtNumber(existing.length) }));
       const stopPoll = pollTaskProgress(task, progressId, (item) => {
         const index = rowIndexByFontId.get(item.id);
         if (index !== undefined) task.row(index, item.status, item.detail, false);
@@ -3478,51 +3571,63 @@ function confirmDeleteFamily(group) {
         if (data.ok) {
           const backupCount = (data.backups || []).length;
           const removed = Number.isFinite(data.fileCount) ? data.fileCount : existing.length;
-          task.markAll('done', 'Dihapus');
+          task.markAll('done', t('Dihapus'));
           task.finish({
-            title: 'Penghapusan selesai',
-            subtitle: `${group.family}: ${fmtNumber(removed)} berkas dihapus${
-              backupCount ? ` · ${fmtNumber(backupCount)} cadangan tersimpan` : ''
-            }.`,
-            hint: 'Daftar font sudah diperbarui.',
+            title: t('Penghapusan selesai'),
+            subtitle:
+              tp('{name}: {count} berkas dihapus', {
+                name: group.family,
+                count: fmtNumber(removed)
+              }) + (backupCount ? ' ' + tp('· {count} cadangan tersimpan', { count: fmtNumber(backupCount) }) : '') + '.',
+            hint: t('Daftar font sudah diperbarui.'),
             tone: 'done'
           });
-          toast('success', `${group.family}: ${removed} berkas dihapus.`, { timeout: 6000 });
+          toast(
+            'success',
+            tp('{name}: {count} berkas dihapus.', { name: group.family, count: removed }),
+            { timeout: 6000 }
+          );
         } else if (data.canceled) {
-          task.markAll('pending', 'Dibatalkan');
+          task.markAll('pending', t('Dibatalkan'));
           task.finish({
-            title: 'Dibatalkan',
-            subtitle: data.error || 'Penghapusan dibatalkan; tidak ada perubahan.',
+            title: t('Dibatalkan'),
+            subtitle: data.error || t('Penghapusan dibatalkan; tidak ada perubahan.'),
             hint: '',
             tone: 'warn',
             autoClose: false
           });
-          toast('warn', data.error || 'Penghapusan dibatalkan.', { timeout: 6000 });
+          toast('warn', data.error || t('Penghapusan dibatalkan.'), { timeout: 6000 });
         } else {
-          task.markAll('fail', 'Gagal');
+          task.markAll('fail', t('Gagal'));
           task.finish({
-            title: 'Penghapusan tidak selesai',
-            subtitle: data.error || 'Kesalahan tidak diketahui.',
-            hint: 'Sebagian berkas mungkin sudah berubah. Pindai ulang untuk memastikan.',
+            title: t('Penghapusan tidak selesai'),
+            subtitle: data.error || t('Kesalahan tidak diketahui.'),
+            hint: t('Sebagian berkas mungkin sudah berubah. Pindai ulang untuk memastikan.'),
             tone: 'fail',
             autoClose: false
           });
-          toast('error', 'Penghapusan tidak selesai: ' + (data.error || 'kesalahan tidak diketahui'), {
-            timeout: 10000
-          });
+          toast(
+            'error',
+            tp('Penghapusan tidak selesai: {error}', {
+              error: data.error || t('kesalahan tidak diketahui')
+            }),
+            { timeout: 10000 }
+          );
         }
         await loadFonts(true);
         await loadBackups(true);
       } catch (error) {
-        task.markAll('fail', 'Gagal');
+        task.markAll('fail', t('Gagal'));
         task.finish({
-          title: 'Gagal menghapus',
+          title: t('Gagal menghapus'),
           subtitle: error.message,
-          hint: 'Tidak ada berkas yang dihapus.',
+          hint: t('Tidak ada berkas yang dihapus.'),
           tone: 'fail',
           autoClose: false
         });
-          toast('error', 'Gagal menghapus keluarga font: ' + error.message, { timeout: 9000 });
+          toast('error', tp('Gagal menghapus keluarga font: {error}', { error: error.message }), {
+            timeout: 9000
+          });
       } finally {
         stopPoll();
       }
@@ -3530,12 +3635,12 @@ function confirmDeleteFamily(group) {
     return;
   }
 
-  const cleanupBtn = el('button', { class: 'btn danger', type: 'button' }, icon('trash'), `Bersihkan ${files.length} entri`);
+  const cleanupBtn = el('button', { class: 'btn danger', type: 'button' }, icon('trash'), tp('Bersihkan {count} entri', { count: files.length }));
   let closeModal;
-  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', onclick: () => closeModal() }, 'Batal');
+  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', onclick: () => closeModal() }, t('Batal'));
   closeModal = openModal({
-    title: `Bersihkan entri ${group.family}?`,
-    subtitle: 'Tidak ada berkas yang tersisa di disk; hanya entri registri yang akan dibersihkan.',
+    title: tp('Bersihkan entri {name}?', { name: group.family }),
+    subtitle: t('Tidak ada berkas yang tersisa di disk; hanya entri registri yang akan dibersihkan.'),
     content,
     footer: [cancelBtn, cleanupBtn]
   });
@@ -3546,12 +3651,12 @@ function confirmDeleteFamily(group) {
     const progressId = newProgressId();
     const rowIndexByFontId = new Map(files.map((font, index) => [font.id, index]));
     const task = openTask({
-      title: `Membersihkan ${group.family}`,
-      subtitle: `${fmtNumber(files.length)} entri registri`,
-      hint: 'Jika jendela UAC muncul, setujui untuk melanjutkan.',
-      rows: files.map((font) => ({ name: font.fileName || fontLabel(font), meta: 'entri registri' }))
+      title: tp('Membersihkan {name}', { name: group.family }),
+      subtitle: tp('{count} entri registri', { count: fmtNumber(files.length) }),
+      hint: t('Jika jendela UAC muncul, setujui untuk melanjutkan.'),
+      rows: files.map((font) => ({ name: font.fileName || fontLabel(font), meta: t('entri registri') }))
     });
-    task.indeterminate(`${fmtNumber(files.length)} entri`);
+    task.indeterminate(tp('{count} entri', { count: fmtNumber(files.length) }));
     const stopPoll = pollTaskProgress(task, progressId, (item) => {
       const index = rowIndexByFontId.get(item.id);
       if (index !== undefined) task.row(index, item.status, item.detail, false);
@@ -3567,40 +3672,55 @@ function confirmDeleteFamily(group) {
       if (!data) throw new Error(`HTTP ${response.status}`);
 
       if (data.ok) {
-        task.markAll('done', 'Dibersihkan');
+        task.markAll('done', t('Dibersihkan'));
         task.finish({
-          title: 'Pembersihan selesai',
-          subtitle: `${group.family}: ${fmtNumber(data.count)} entri dibersihkan.`,
-          hint: 'Daftar font sudah diperbarui.',
+          title: t('Pembersihan selesai'),
+          subtitle: tp('{name}: {count} entri dibersihkan.', {
+            name: group.family,
+            count: fmtNumber(data.count)
+          }),
+          hint: t('Daftar font sudah diperbarui.'),
           tone: 'done'
         });
-        toast('success', `${group.family}: ${data.count} entri dibersihkan.`, { timeout: 5000 });
+        toast(
+          'success',
+          tp('{name}: {count} entri dibersihkan.', { name: group.family, count: data.count }),
+          { timeout: 5000 }
+        );
       } else if (data.canceled) {
-        task.markAll('pending', 'Dibatalkan');
+        task.markAll('pending', t('Dibatalkan'));
         task.finish({
-          title: 'Dibatalkan',
-          subtitle: data.error || 'Pembersihan dibatalkan.',
+          title: t('Dibatalkan'),
+          subtitle: data.error || t('Pembersihan dibatalkan.'),
           hint: '',
           tone: 'warn',
           autoClose: false
         });
-        toast('warn', data.error || 'Pembersihan dibatalkan.', { timeout: 6000 });
+        toast('warn', data.error || t('Pembersihan dibatalkan.'), { timeout: 6000 });
       } else {
-        task.markAll('fail', 'Gagal');
+        task.markAll('fail', t('Gagal'));
         task.finish({
-          title: 'Pembersihan tidak selesai',
-          subtitle: data.error || 'Kesalahan tidak diketahui.',
+          title: t('Pembersihan tidak selesai'),
+          subtitle: data.error || t('Kesalahan tidak diketahui.'),
           hint: '',
           tone: 'fail',
           autoClose: false
         });
-        toast('error', 'Pembersihan tidak selesai: ' + (data.error || 'kesalahan tidak diketahui'), { timeout: 10000 });
+        toast(
+          'error',
+          tp('Pembersihan tidak selesai: {error}', {
+            error: data.error || t('kesalahan tidak diketahui')
+          }),
+          { timeout: 10000 }
+        );
       }
       await loadFonts(true);
     } catch (error) {
-      task.markAll('fail', 'Gagal');
-      task.finish({ title: 'Gagal membersihkan', subtitle: error.message, hint: '', tone: 'fail', autoClose: false });
-      toast('error', 'Gagal membersihkan entri: ' + error.message, { timeout: 9000 });
+      task.markAll('fail', t('Gagal'));
+      task.finish({ title: t('Gagal membersihkan'), subtitle: error.message, hint: '', tone: 'fail', autoClose: false });
+      toast('error', tp('Gagal membersihkan entri: {error}', { error: error.message }), {
+        timeout: 9000
+      });
     } finally {
       stopPoll();
     }
@@ -3615,7 +3735,9 @@ function confirmDeleteSelection() {
   if (files.length > MAX_SELECTION_FILES) {
     toast(
       'warn',
-      `Pilihan melebihi batas ${fmtNumber(MAX_SELECTION_FILES)} berkas. Kurangi pilihan terlebih dahulu.`,
+      tp('Pilihan melebihi batas {count} berkas. Kurangi pilihan terlebih dahulu.', {
+        count: fmtNumber(MAX_SELECTION_FILES)
+      }),
       { timeout: 6500 }
     );
     return;
@@ -3637,8 +3759,8 @@ function confirmDeleteSelection() {
       el(
         'div',
         {},
-        el('strong', {}, `${fmtNumber(groups.length)} keluarga terpilih`),
-        el('span', {}, `${fmtNumber(files.length)} berkas · ${fmtBytes(totalSize)}`)
+        el('strong', {}, tp('{count} keluarga terpilih', { count: fmtNumber(groups.length) })),
+        el('span', {}, tp('{count} berkas · {size}', { count: fmtNumber(files.length), size: fmtBytes(totalSize) }))
       )
     )
   );
@@ -3650,14 +3772,14 @@ function confirmDeleteSelection() {
         'div',
         { class: 'modal-file-row' },
         el('span', { class: 'modal-family-name', title: group.family }, group.family),
-        el('span', { class: 'mono' }, `${fmtNumber(group.files.length)} berkas`),
+        el('span', { class: 'mono' }, tp('{count} berkas', { count: fmtNumber(group.files.length) })),
         el('span', { class: 'modal-row-size' }, fmtBytes(group.totalSize))
       )
     );
   }
   if (groups.length > 80) {
     familyList.append(
-      el('div', { class: 'modal-file-row modal-more' }, `+${fmtNumber(groups.length - 80)} keluarga lainnya`)
+      el('div', { class: 'modal-file-row modal-more' }, tp('+{count} keluarga lainnya', { count: fmtNumber(groups.length - 80) }))
     );
   }
   content.append(familyList);
@@ -3705,9 +3827,10 @@ function confirmDeleteSelection() {
         el(
           'div',
           {},
-          `${fmtNumber(missingCount)} dari ${fmtNumber(
-            files.length
-          )} berkas sudah hilang. Entri registrinya tetap dibersihkan.`
+          tp('{missing} dari {total} berkas sudah hilang. Entri registrinya tetap dibersihkan.', {
+            missing: fmtNumber(missingCount),
+            total: fmtNumber(files.length)
+          })
         )
       )
     );
@@ -3724,7 +3847,9 @@ function confirmDeleteSelection() {
         el(
           'span',
           {},
-          `Cadangkan ${fmtNumber(existing.length)} berkas sebelum dihapus (dapat dipulihkan dari tab Cadangan).`
+          tp('Cadangkan {count} berkas sebelum dihapus (dapat dipulihkan dari tab Cadangan).', {
+            count: fmtNumber(existing.length)
+          })
         )
       )
     );
@@ -3733,7 +3858,7 @@ function confirmDeleteSelection() {
         'div',
         { class: 'notice' },
         icon('info'),
-        el('div', {}, 'Semua pilihan dihapus dalam satu operasi. Jika ada font sistem, satu jendela UAC akan muncul.')
+        el('div', {}, t('Semua pilihan dihapus dalam satu operasi. Jika ada font sistem, satu jendela UAC akan muncul.'))
       )
     );
   } else {
@@ -3742,7 +3867,7 @@ function confirmDeleteSelection() {
         'div',
         { class: 'notice' },
         icon('info'),
-        el('div', {}, 'Tidak ada berkas tersisa di disk; hanya entri registri yang akan dibersihkan.')
+        el('div', {}, t('Tidak ada berkas tersisa di disk; hanya entri registri yang akan dibersihkan.'))
       )
     );
   }
@@ -3758,15 +3883,15 @@ function confirmDeleteSelection() {
         el(
           'span',
           {},
-          'Saya mengerti risikonya dan tetap ingin menghapus keluarga inti sistem yang dipilih.'
+          t('Saya mengerti risikonya dan tetap ingin menghapus keluarga inti sistem yang dipilih.')
         )
       )
     );
   }
 
   const actionLabel = existing.length
-    ? `Hapus ${fmtNumber(existing.length)} berkas`
-    : `Bersihkan ${fmtNumber(files.length)} entri`;
+    ? tp('Hapus {count} berkas', { count: fmtNumber(existing.length) })
+    : tp('Bersihkan {count} entri', { count: fmtNumber(files.length) });
   const deleteBtn = el(
     'button',
     { class: 'btn danger', type: 'button', disabled: protectedGroups.length > 0 },
@@ -3783,16 +3908,16 @@ function confirmDeleteSelection() {
   const cancelBtn = el(
     'button',
     { class: 'btn ghost', type: 'button', onclick: () => closeModal() },
-    'Batal'
+    t('Batal')
   );
 
   closeModal = openModal({
     title: existing.length
-      ? `Hapus ${fmtNumber(groups.length)} keluarga terpilih?`
-      : `Bersihkan ${fmtNumber(groups.length)} keluarga terpilih?`,
+      ? tp('Hapus {count} keluarga terpilih?', { count: fmtNumber(groups.length) })
+      : tp('Bersihkan {count} keluarga terpilih?', { count: fmtNumber(groups.length) }),
     subtitle: existing.length
-      ? 'Seluruh berkas dan entri registri dari keluarga yang dipilih akan dihapus dari Windows.'
-      : 'Tidak ada berkas yang tersisa; hanya entri registri yang akan dibersihkan.',
+      ? t('Seluruh berkas dan entri registri dari keluarga yang dipilih akan dihapus dari Windows.')
+      : t('Tidak ada berkas yang tersisa; hanya entri registri yang akan dibersihkan.'),
     content,
     footer: [cancelBtn, deleteBtn]
   });
@@ -3809,16 +3934,21 @@ function confirmDeleteSelection() {
     const latestByFontId = new Map();
     const task = openTask({
       title: existing.length
-        ? `Menghapus ${fmtNumber(groups.length)} keluarga`
-        : `Membersihkan ${fmtNumber(groups.length)} keluarga`,
-      subtitle: `${fmtNumber(files.length)} berkas · menyiapkan cadangan…`,
-      hint: 'Satu operasi untuk semua pilihan. Jika jendela UAC muncul, setujui untuk melanjutkan.',
+        ? tp('Menghapus {count} keluarga', { count: fmtNumber(groups.length) })
+        : tp('Membersihkan {count} keluarga', { count: fmtNumber(groups.length) }),
+      subtitle: tp('{count} berkas · menyiapkan cadangan…', { count: fmtNumber(files.length) }),
+      hint: t('Satu operasi untuk semua pilihan. Jika jendela UAC muncul, setujui untuk melanjutkan.'),
       rows: groups.map((group) => ({
         name: group.family,
-        meta: `${fmtNumber(group.files.length)} berkas`
+        meta: tp('{count} berkas', { count: fmtNumber(group.files.length) })
       }))
     });
-    task.indeterminate(`${fmtNumber(groups.length)} keluarga · ${fmtNumber(files.length)} berkas`);
+    task.indeterminate(
+      tp('{families} keluarga · {files} berkas', {
+        families: fmtNumber(groups.length),
+        files: fmtNumber(files.length)
+      })
+    );
     const stopPoll = pollTaskProgress(task, progressId, (item) => {
       latestByFontId.set(item.id, item);
       const groupIndex = groupIndexByFontId.get(item.id);
@@ -3840,13 +3970,29 @@ function confirmDeleteSelection() {
         task.row(
           groupIndex,
           'busy',
-          `${fmtNumber(finished)}/${fmtNumber(total)} · ${busyItem.detail || 'Memproses…'}`,
+          tp('{done} / {total}', { done: fmtNumber(finished), total: fmtNumber(total) }) +
+            ' · ' +
+            t(busyItem.detail || 'Memproses…'),
           false
         );
       } else if (total && finished === total) {
-        task.row(groupIndex, fail ? 'fail' : 'done', fail ? `${fmtNumber(fail)} gagal` : `${fmtNumber(total)} berkas`, false);
+        task.row(
+          groupIndex,
+          fail ? 'fail' : 'done',
+          fail
+            ? tp('{count} gagal', { count: fmtNumber(fail) })
+            : tp('{count} berkas', { count: fmtNumber(total) }),
+          false
+        );
       } else {
-        task.row(groupIndex, 'pending', finished ? `${fmtNumber(finished)}/${fmtNumber(total)}` : '', false);
+        task.row(
+          groupIndex,
+          'pending',
+          finished
+            ? tp('{done} / {total}', { done: fmtNumber(finished), total: fmtNumber(total) })
+            : '',
+          false
+        );
       }
     });
 
@@ -3869,15 +4015,21 @@ function confirmDeleteSelection() {
           ? data.fileCount
           : Number(data.count) || files.length;
         const summary = existing.length
-          ? `${fmtNumber(fileCount)} berkas dihapus dari ${fmtNumber(groups.length)} keluarga${
-              backupCount ? ` · ${fmtNumber(backupCount)} cadangan tersimpan` : ''
-            }.`
-          : `${fmtNumber(groups.length)} keluarga: ${fmtNumber(data.count || files.length)} entri dibersihkan.`;
-        task.markAll('done', existing.length ? 'Dihapus' : 'Dibersihkan');
+          ? tp('{count} berkas dihapus dari {families} keluarga', {
+              count: fmtNumber(fileCount),
+              families: fmtNumber(groups.length)
+            }) +
+            (backupCount ? ' ' + tp('· {count} cadangan tersimpan', { count: fmtNumber(backupCount) }) : '') +
+            '.'
+          : tp('{families} keluarga: {count} entri dibersihkan.', {
+              families: fmtNumber(groups.length),
+              count: fmtNumber(data.count || files.length)
+            });
+        task.markAll('done', existing.length ? t('Dihapus') : t('Dibersihkan'));
         task.finish({
-          title: 'Operasi selesai',
+          title: t('Operasi selesai'),
           subtitle: summary,
-          hint: 'Daftar font dan cadangan sudah diperbarui.',
+          hint: t('Daftar font dan cadangan sudah diperbarui.'),
           tone: 'done'
         });
         toast('success', summary, { timeout: 8000 });
@@ -3886,40 +4038,46 @@ function confirmDeleteSelection() {
         await loadFonts(true);
         await loadBackups(true);
       } else if (data.canceled) {
-        task.markAll('pending', 'Dibatalkan');
+        task.markAll('pending', t('Dibatalkan'));
         task.finish({
-          title: 'Dibatalkan',
-          subtitle: data.error || 'Penghapusan dibatalkan; tidak ada perubahan.',
+          title: t('Dibatalkan'),
+          subtitle: data.error || t('Penghapusan dibatalkan; tidak ada perubahan.'),
           hint: '',
           tone: 'warn',
           autoClose: false
         });
-        toast('warn', data.error || 'Penghapusan dibatalkan.', { timeout: 6500 });
+        toast('warn', data.error || t('Penghapusan dibatalkan.'), { timeout: 6500 });
       } else {
-        task.markAll('fail', 'Gagal');
+        task.markAll('fail', t('Gagal'));
         task.finish({
-          title: 'Penghapusan tidak selesai',
-          subtitle: data.error || 'Kesalahan tidak diketahui.',
-          hint: 'Pindai ulang untuk melihat kondisi terakhir.',
+          title: t('Penghapusan tidak selesai'),
+          subtitle: data.error || t('Kesalahan tidak diketahui.'),
+          hint: t('Pindai ulang untuk melihat kondisi terakhir.'),
           tone: 'fail',
           autoClose: false
         });
-        toast('error', 'Penghapusan tidak selesai: ' + (data.error || 'kesalahan tidak diketahui'), {
-          timeout: 10000
-        });
+        toast(
+          'error',
+          tp('Penghapusan tidak selesai: {error}', {
+            error: data.error || t('kesalahan tidak diketahui')
+          }),
+          { timeout: 10000 }
+        );
         await loadFonts(true);
         await loadBackups(true);
       }
     } catch (error) {
-      task.markAll('fail', 'Gagal');
+      task.markAll('fail', t('Gagal'));
       task.finish({
-        title: 'Gagal menghapus',
+        title: t('Gagal menghapus'),
         subtitle: error.message,
-        hint: 'Tidak ada perubahan yang dikonfirmasi server.',
+        hint: t('Tidak ada perubahan yang dikonfirmasi server.'),
         tone: 'fail',
         autoClose: false
       });
-      toast('error', 'Gagal menghapus font terpilih: ' + error.message, { timeout: 9000 });
+      toast('error', tp('Gagal menghapus font terpilih: {error}', { error: error.message }), {
+        timeout: 9000
+      });
     } finally {
       stopPoll();
     }
@@ -3957,8 +4115,8 @@ function installOne(file, onProgress) {
         reject(new Error((data && data.error) || `HTTP ${request.status}`));
       }
     });
-    request.addEventListener('error', () => reject(new Error('Koneksi ke server terputus.')));
-    request.addEventListener('abort', () => reject(new Error('Pemasangan dibatalkan.')));
+    request.addEventListener('error', () => reject(new Error(t('Koneksi ke server terputus.'))));
+    request.addEventListener('abort', () => reject(new Error(t('Pemasangan dibatalkan.'))));
     onProgress(0);
     request.send(file);
   });
@@ -3970,71 +4128,164 @@ async function installFiles(fileList) {
   const files = all.filter(isFontFile);
   const rejected = all.length - files.length;
   if (!files.length) {
-    toast('warn', 'Pilih berkas font .ttf, .otf, .ttc, atau .otc.');
+    toast('warn', t('Pilih berkas font .ttf, .otf, .ttc, atau .otc.'));
     return;
   }
 
   const task = openTask({
-    title: `Memasang ${fmtNumber(files.length)} font`,
-    subtitle: 'Berkas dipasang satu per satu untuk akun Anda.',
-    hint: 'Biarkan jendela ini terbuka sampai pemasangan selesai.',
+    title: tp('Memasang {count} font', { count: fmtNumber(files.length) }),
+    subtitle: t('Berkas dipasang satu per satu untuk akun Anda.'),
+    hint: t('Biarkan jendela ini terbuka sampai pemasangan selesai.'),
     rows: files.map((file) => ({ name: file.name, meta: fmtBytes(file.size) }))
   });
-  task.setProgress(0, `0 / ${fmtNumber(files.length)}`);
+  task.setProgress(0, tp('0 / {count}', { count: fmtNumber(files.length) }));
 
   let success = 0;
   const failures = [];
 
   for (let index = 0; index < files.length; index++) {
     const file = files[index];
-    task.row(index, 'busy', 'Mengunggah…');
-    task.setSubtitle(`Memasang ${index + 1}/${files.length}: ${file.name}`);
+    task.row(index, 'busy', t('Mengunggah…'));
+    task.setSubtitle(tp('Memasang {done}/{total}: {name}', { done: index + 1, total: files.length, name: file.name }));
     try {
       await installOne(file, (fraction) => {
         const overall = (index + Math.min(0.9, fraction * 0.9)) / files.length;
-        task.setProgress(overall, `${fmtNumber(index)} / ${fmtNumber(files.length)}`);
-        if (fraction >= 1) task.row(index, 'busy', 'Memasang…');
-        else task.row(index, 'busy', `Mengunggah ${Math.round(fraction * 100)}%`);
+        task.setProgress(
+          overall,
+          tp('{done} / {total}', { done: fmtNumber(index), total: fmtNumber(files.length) })
+        );
+        if (fraction >= 1) task.row(index, 'busy', t('Memasang…'));
+        else task.row(index, 'busy', tp('Mengunggah {percent}%', { percent: Math.round(fraction * 100) }));
       });
       success++;
-      task.row(index, 'done', 'Terpasang');
+      task.row(index, 'done', t('Terpasang'));
     } catch (error) {
       failures.push(`${file.name}: ${error.message}`);
-      task.row(index, 'fail', 'Gagal');
+      task.row(index, 'fail', t('Gagal'));
     }
   }
 
   const summary = failures.length
-    ? `${fmtNumber(success)} berhasil · ${fmtNumber(failures.length)} gagal dipasang.`
-    : `${fmtNumber(success)} font berhasil dipasang untuk akun Anda.`;
+    ? tp('{ok} berhasil · {failed} gagal dipasang.', {
+        ok: fmtNumber(success),
+        failed: fmtNumber(failures.length)
+      })
+    : tp('{count} font berhasil dipasang untuk akun Anda.', { count: fmtNumber(success) });
 
   task.finish({
-    title: failures.length ? 'Pemasangan selesai dengan catatan' : 'Pemasangan selesai',
+    title: failures.length ? t('Pemasangan selesai dengan catatan') : t('Pemasangan selesai'),
     subtitle: summary,
     hint: failures.length
-      ? `Gagal: ${failures[0]}`
+      ? tp('Gagal: {error}', { error: failures[0] })
       : rejected
-        ? `${fmtNumber(rejected)} berkas dilewati karena formatnya tidak didukung.`
-        : 'Daftar font sudah diperbarui.',
+        ? tp('{count} berkas dilewati karena formatnya tidak didukung.', { count: fmtNumber(rejected) })
+        : t('Daftar font sudah diperbarui.'),
     tone: failures.length ? 'fail' : 'done',
     autoClose: !failures.length
   });
 
   if (success) {
-    toast('success', `${success} font berhasil dipasang untuk akun Anda.`, { timeout: 5000 });
+    toast(
+      'success',
+      tp('{count} font berhasil dipasang untuk akun Anda.', { count: success }),
+      { timeout: 5000 }
+    );
     await loadFonts(true);
     await loadBackups(true);
     if (state.view === 'backups') renderBackups();
   }
   if (failures.length) {
-    toast('error', `${failures.length} berkas gagal dipasang — ${failures[0]}`, { timeout: 10000 });
+    toast(
+      'error',
+      tp('{count} berkas gagal dipasang — {detail}', { count: failures.length, detail: failures[0] }),
+      { timeout: 10000 }
+    );
   }
   if (rejected) {
-    toast('warn', `${rejected} berkas dilewati karena formatnya tidak didukung.`, { timeout: 6000 });
+    toast(
+      'warn',
+      tp('{count} berkas dilewati karena formatnya tidak didukung.', { count: rejected }),
+      { timeout: 6000 }
+    );
   }
 }
 
 /* --------------------------------------------------------------- cadangan */
+
+/**
+ * Buat cadangan manual untuk satu atau beberapa font. Dipakai tombol
+ * Cadangkan di detail font dan di famili Adobe Fonts; hasilnya tampil di tab
+ * Cadangan dan dapat dipulihkan ke folder pengguna.
+ */
+/** Jumlah ID per permintaan; sama dengan batas server (backup-batch). */
+const BACKUP_BATCH_SIZE = 500;
+
+function backupSelection() {
+  backupFonts(selectedGroups().flatMap((group) => group.files), els.backupSelected);
+}
+
+async function backupFonts(fonts, btn) {
+  if (taskGuard()) return;
+  const list = (fonts || []).filter((font) => font && font.exists);
+  if (!list.length) {
+    toast('warn', t('Tidak ada berkas font yang dapat dicadangkan.'), { timeout: 4200 });
+    return;
+  }
+  if (btn instanceof HTMLElement) {
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+  }
+  try {
+    const created = [];
+    const failed = [];
+    for (let start = 0; start < list.length; start += BACKUP_BATCH_SIZE) {
+      const ids = list.slice(start, start + BACKUP_BATCH_SIZE).map((font) => font.id);
+      let data;
+      try {
+        ({ data } = await api('/api/fonts/backup-batch', { method: 'POST', json: { ids } }));
+      } catch (error) {
+        // Server menjawab 400 bila satu batch seluruhnya gagal; tetap lanjutkan batch lain.
+        if (!error.data) throw error;
+        data = error.data;
+      }
+      created.push(...((data && data.backups) || []));
+      failed.push(...((data && data.failed) || []));
+    }
+    if (created.length) {
+      await loadBackups(true);
+      if (state.view === 'backups') renderBackups();
+      toast('success', tp('{count} font dicadangkan.', { count: fmtNumber(created.length) }), {
+        timeout: 4200
+      });
+    }
+    if (failed.length) {
+      toast(
+        'warn',
+        tp('{count} font gagal dicadangkan.', { count: fmtNumber(failed.length) }),
+        { timeout: 8000 }
+      );
+    }
+  } catch (error) {
+    toast('error', tp('Gagal mencadangkan font: {error}', { error: error.message }), { timeout: 8000 });
+  } finally {
+    if (btn instanceof HTMLElement && btn.isConnected) {
+      btn.disabled = false;
+      btn.classList.remove('is-busy');
+    }
+  }
+}
+
+async function openBackupFolder(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    await api('/api/backups/folder', { method: 'POST' });
+    toast('info', t('Folder cadangan font dibuka di Explorer.'), { timeout: 2400 });
+  } catch (error) {
+    toast('error', tp('Gagal membuka folder: {error}', { error: error.message }));
+  } finally {
+    if (btn && btn.isConnected) btn.disabled = false;
+  }
+}
 
 async function loadBackups(force = false) {
   if (state.backupsLoading) return;
@@ -4051,8 +4302,8 @@ async function loadBackups(force = false) {
     if (state.view === 'backups') {
       els.grid.innerHTML = '';
       els.sentinel.hidden = true;
-      els.viewInfo.textContent = 'Gagal memuat';
-      showEmpty('Gagal memuat cadangan', error.message, 'Coba lagi', () => loadBackups(true));
+      els.viewInfo.textContent = t('Gagal memuat');
+      showEmpty(t('Gagal memuat cadangan'), error.message, t('Coba lagi'), () => loadBackups(true));
     }
   } finally {
     state.backupsLoading = false;
@@ -4062,15 +4313,16 @@ async function loadBackups(force = false) {
 function renderBackups() {
   if (state.selectMode) setSelectMode(false);
   updateSelectionUI();
-  els.viewTitle.textContent = 'Cadangan font';
-  els.viewSub.textContent = 'Salinan font yang dihapus — dapat dipulihkan kapan saja';
+  els.openBackupFolder.hidden = false;
+  els.viewTitle.textContent = t('Cadangan font');
+  els.viewSub.textContent = t('Salinan font yang dihapus — dapat dipulihkan kapan saja');
   els.grid.className = 'grid backup-grid';
   els.grid.innerHTML = '';
   els.sentinel.hidden = true;
   hideEmpty();
 
   if (state.backupsLoading && !state.backupsLoaded) {
-    els.viewInfo.textContent = 'Memuat…';
+    els.viewInfo.textContent = t('Memuat…');
     for (let i = 0; i < 4; i++) {
       els.grid.append(el('div', { class: 'sk', style: { height: '64px', borderRadius: '12px' } }));
     }
@@ -4078,10 +4330,10 @@ function renderBackups() {
   }
 
   if (!state.backups.length) {
-    els.viewInfo.textContent = '0 cadangan';
+    els.viewInfo.textContent = t('0 cadangan');
     showEmpty(
-      'Belum ada cadangan',
-      'Setiap font yang Anda hapus akan disalin lebih dulu ke folder data/backups sehingga bisa dipulihkan dari sini.',
+      t('Belum ada cadangan'),
+      t('Font yang dihapus otomatis disalin ke folder cadangan, dan Anda juga bisa mencadangkan font kapan saja dengan tombol Cadangkan.'),
       null,
       null
     );
@@ -4093,31 +4345,35 @@ function renderBackups() {
   els.grid.append(list);
 
   const totalSize = state.backups.reduce((sum, item) => sum + (item.size || 0), 0);
-  els.viewInfo.textContent = `${fmtNumber(state.backups.length)} cadangan · ${fmtBytes(totalSize)}`;
+  els.viewInfo.textContent = tp('{count} cadangan · {size}', {
+    count: fmtNumber(state.backups.length),
+    size: fmtBytes(totalSize)
+  });
 }
 
 function createBackupRow(item) {
   const row = el('div', { class: 'backup-row' });
 
-  const restoreBtn = el('button', { class: 'btn-mini', type: 'button' }, icon('restore'), 'Pulihkan');
+  const restoreBtn = el('button', { class: 'btn-mini', type: 'button' }, icon('restore'), t('Pulihkan'));
   restoreBtn.addEventListener('click', () => restoreBackup(item, restoreBtn));
 
   const deleteBtn = el(
     'button',
-    { class: 'btn-mini is-danger', type: 'button', title: 'Hapus cadangan permanen' },
+    { class: 'btn-mini is-danger', type: 'button', title: t('Hapus cadangan permanen') },
     icon('trash'),
-    'Hapus'
+    t('Hapus')
   );
   deleteBtn.addEventListener('click', () => deleteBackup(item));
 
   const meta = el(
     'div',
     { class: 'backup-meta' },
-    el('span', {}, fmtDateTime(item.deletedAt)),
+    el('span', {}, fmtDateTime(item.createdAt || item.deletedAt)),
     el('span', {}, fmtBytes(item.size))
   );
-  if (item.exists === false) meta.append(el('span', { class: 'backup-missing' }, 'berkas cadangan hilang'));
-  if (item.protected) meta.append(el('span', { class: 'chip warn' }, 'Inti sistem'));
+  if (item.mode === 'manual') meta.append(el('span', { class: 'chip' }, t('Manual')));
+  if (item.exists === false) meta.append(el('span', { class: 'backup-missing' }, t('berkas cadangan hilang')));
+  if (item.protected) meta.append(el('span', { class: 'chip warn' }, t('Inti sistem')));
 
   row.append(
     el('div', { class: 'backup-mark' }, icon('archive')),
@@ -4140,15 +4396,15 @@ async function restoreBackup(item, btn) {
     btn.disabled = true;
     btn.classList.add('is-busy');
     btn.innerHTML = '';
-    btn.append(icon('refresh'), 'Memulihkan…');
+    btn.append(icon('refresh'), t('Memulihkan…'));
   }
 
   const label = item.family || item.fileName || 'font';
   const progressId = newProgressId();
   const task = openTask({
-    title: `Memulihkan ${label}`,
+    title: tp('Memulihkan {name}', { name: label }),
     subtitle: `${item.fileName || ''} · ${fmtBytes(item.size)}`,
-    hint: 'Berkas cadangan dikembalikan ke lokasi aslinya. Jika jendela UAC muncul, setujui.',
+    hint: t('Berkas cadangan dikembalikan ke lokasi aslinya. Jika jendela UAC muncul, setujui.'),
     rows: [{ name: item.fileName || label, meta: item.subfamily || '' }]
   });
   task.indeterminate('1 berkas');
@@ -4166,70 +4422,89 @@ async function restoreBackup(item, btn) {
     if (!data) throw new Error(`HTTP ${response.status}`);
 
     if (data.ok) {
-      task.markAll('done', 'Dipulihkan');
+      task.markAll('done', t('Dipulihkan'));
+      const copied = data.copiedAsNew && data.restoredTo;
       task.finish({
-        title: 'Pemulihan selesai',
-        subtitle: `${label} berhasil dipulihkan.`,
-        hint: 'Daftar font sudah diperbarui.',
+        title: t('Pemulihan selesai'),
+        subtitle: copied
+          ? tp('Berkas {name} dipulihkan ke folder font pengguna.', { name: label })
+          : `${label} berhasil dipulihkan.`,
+        hint: copied
+          ? t('Berkas asli masih ada, jadi cadangan ini dipulihkan sebagai salinan baru.')
+          : t('Daftar font sudah diperbarui.'),
         tone: 'done'
       });
-      toast('success', `${label} berhasil dipulihkan.`, { timeout: 5000 });
+      toast(
+        'success',
+        copied
+          ? tp('{name} dipulihkan sebagai salinan baru di folder font pengguna.', { name: label })
+          : `${label} berhasil dipulihkan.`,
+        { timeout: 5000 }
+      );
     } else if (data.restored) {
-      task.markAll('done', 'Dipulihkan');
+      task.markAll('done', t('Dipulihkan'));
       task.finish({
-        title: 'Pemulihan sebagian',
-        subtitle: `Berkas ${label} dipulihkan, tetapi pendaftaran registri gagal: ${
-          data.error || 'kesalahan tidak diketahui'
-        }.`,
-        hint: 'Gunakan Pindai untuk memeriksa status font.',
+        title: t('Pemulihan sebagian'),
+        subtitle: tp('Berkas {name} dipulihkan, tetapi pendaftaran registri gagal: {error}.', {
+          name: label,
+          error: data.error || t('kesalahan tidak diketahui')
+        }),
+        hint: t('Gunakan Pindai untuk memeriksa status font.'),
         tone: 'warn',
         autoClose: false
       });
       toast(
         'warn',
-        `Berkas ${label} dipulihkan, tetapi pendaftaran registri gagal: ${data.error || 'kesalahan tidak diketahui'}`,
+        tp('Berkas {name} dipulihkan, tetapi pendaftaran registri gagal: {error}', {
+          name: label,
+          error: data.error || t('kesalahan tidak diketahui')
+        }),
         { timeout: 10000 }
       );
     } else if (data.canceled) {
-      task.markAll('pending', 'Dibatalkan');
+      task.markAll('pending', t('Dibatalkan'));
       task.finish({
-        title: 'Dibatalkan',
-        subtitle: data.error || 'Pemulihan dibatalkan.',
+        title: t('Dibatalkan'),
+        subtitle: data.error || t('Pemulihan dibatalkan.'),
         hint: '',
         tone: 'warn',
         autoClose: false
       });
-      toast('warn', data.error || 'Pemulihan dibatalkan.', { timeout: 6000 });
+      toast('warn', data.error || t('Pemulihan dibatalkan.'), { timeout: 6000 });
     } else {
-      task.markAll('fail', 'Gagal');
+      task.markAll('fail', t('Gagal'));
       task.finish({
-        title: 'Pemulihan tidak selesai',
-        subtitle: data.error || 'Kesalahan tidak diketahui.',
+        title: t('Pemulihan tidak selesai'),
+        subtitle: data.error || t('Kesalahan tidak diketahui.'),
         hint: '',
         tone: 'fail',
         autoClose: false
       });
-      toast('error', 'Pemulihan tidak selesai: ' + (data.error || 'kesalahan tidak diketahui'), {
-        timeout: 10000
-      });
+      toast(
+        'error',
+        tp('Pemulihan tidak selesai: {error}', {
+          error: data.error || t('kesalahan tidak diketahui')
+        }),
+        { timeout: 10000 }
+      );
     }
   } catch (error) {
-    task.markAll('fail', 'Gagal');
+    task.markAll('fail', t('Gagal'));
     task.finish({
-      title: 'Gagal memulihkan',
+      title: t('Gagal memulihkan'),
       subtitle: error.message,
       hint: '',
       tone: 'fail',
       autoClose: false
     });
-    toast('error', 'Gagal memulihkan font: ' + error.message);
+    toast('error', tp('Gagal memulihkan font: {error}', { error: error.message }));
   } finally {
     stopPoll();
     if (btn instanceof HTMLElement && btn.isConnected) {
       btn.disabled = false;
       btn.classList.remove('is-busy');
       btn.innerHTML = '';
-      btn.append(icon('restore'), 'Pulihkan');
+      btn.append(icon('restore'), t('Pulihkan'));
     }
   }
 
@@ -4241,43 +4516,46 @@ async function restoreBackup(item, btn) {
 async function deleteBackup(item) {
   if (taskGuard()) return;
   const ok = await confirmModal({
-    title: 'Hapus cadangan permanen?',
-    subtitle: 'Berkas cadangan akan dihapus dari disk.',
-    message: `Cadangan ${item.family || item.fileName} (${fmtBytes(item.size)}) akan dihapus dan tidak dapat dipulihkan lagi.`,
-    confirmLabel: 'Hapus permanen',
+    title: t('Hapus cadangan permanen?'),
+    subtitle: t('Berkas cadangan akan dihapus dari disk.'),
+    message: tp('Cadangan {name} ({size}) akan dihapus dan tidak dapat dipulihkan lagi.', {
+      name: item.family || item.fileName,
+      size: fmtBytes(item.size)
+    }),
+    confirmLabel: t('Hapus permanen'),
     tone: 'danger'
   });
   if (!ok) return;
 
-  const label = item.family || item.fileName || 'cadangan';
+  const label = item.family || item.fileName || t('cadangan');
   const task = openTask({
-    title: 'Menghapus cadangan',
+    title: t('Menghapus cadangan'),
     subtitle: `${label} · ${fmtBytes(item.size)}`,
-    hint: 'Berkas cadangan dihapus permanen dari disk.',
+    hint: t('Berkas cadangan dihapus permanen dari disk.'),
     rows: [{ name: item.fileName || label, meta: item.subfamily || '' }]
   });
   task.indeterminate('1 berkas');
 
   try {
     await api(`/api/backups/${item.id}`, { method: 'DELETE' });
-    task.row(0, 'done', 'Dihapus');
+    task.row(0, 'done', t('Dihapus'));
     task.finish({
-      title: 'Cadangan dihapus',
-      subtitle: `${label} dihapus permanen.`,
+      title: t('Cadangan dihapus'),
+      subtitle: tp('{name} dihapus permanen.', { name: label }),
       hint: '',
       tone: 'done'
     });
-    toast('success', 'Cadangan dihapus.', { timeout: 3000 });
+    toast('success', t('Cadangan dihapus.'), { timeout: 3000 });
   } catch (error) {
-    task.row(0, 'fail', 'Gagal');
+    task.row(0, 'fail', t('Gagal'));
     task.finish({
-      title: 'Gagal menghapus cadangan',
+      title: t('Gagal menghapus cadangan'),
       subtitle: error.message,
       hint: '',
       tone: 'fail',
       autoClose: false
     });
-    toast('error', 'Gagal menghapus cadangan: ' + error.message);
+    toast('error', tp('Gagal menghapus cadangan: {error}', { error: error.message }));
   }
   await loadBackups(true);
   if (state.view === 'backups') renderBackups();
@@ -4294,7 +4572,7 @@ function appendUndetectedTracked(fonts, trackedMeta, fontById) {
    */
   for (const [id, meta] of Object.entries(trackedMeta || {})) {
     if (fontById.has(id)) continue;
-    const family = (meta && meta.family) || (meta && meta.fileName) || 'Font tanpa nama';
+    const family = (meta && meta.family) || (meta && meta.fileName) || t('Font tanpa nama');
     const subfamily = (meta && meta.subfamily) || '';
     const font = {
       id,
@@ -4310,8 +4588,8 @@ function appendUndetectedTracked(fonts, trackedMeta, fontById) {
       format: '',
       type: '',
       weightClass: 400,
-      weightName: 'Regular',
-      embedding: 'Tidak diketahui',
+      weightName: t('Regular'),
+      embedding: t('Tidak diketahui'),
       fsType: 0,
       isVariable: false,
       isCollection: false,
@@ -4325,7 +4603,7 @@ function appendUndetectedTracked(fonts, trackedMeta, fontById) {
       exists: false,
       previewable: false,
       source: 'tracked',
-      sourceLabel: SOURCE_LABELS.tracked,
+      sourceLabel: t(SOURCE_LABELS.tracked),
       protected: false,
       registered: false,
       registry: [],
@@ -4343,7 +4621,7 @@ async function loadFonts(force = false) {
   setBusy(true);
   if (!state.fonts.length) {
     renderSkeleton();
-    els.viewInfo.textContent = 'Memindai…';
+    els.viewInfo.textContent = t('Memindai…');
   }
 
   try {
@@ -4382,14 +4660,14 @@ async function loadFonts(force = false) {
     state.loading = false;
     els.grid.innerHTML = '';
     els.sentinel.hidden = true;
-    els.viewInfo.textContent = 'Gagal memindai';
+    els.viewInfo.textContent = t('Gagal memindai');
     showEmpty(
-      'Tidak dapat memindai font',
+      t('Tidak dapat memindai font'),
       `${error.message}. Pastikan aplikasi dijalankan di Windows dengan PowerShell tersedia.`,
-      'Coba lagi',
+      t('Coba lagi'),
       () => loadFonts(true)
     );
-    toast('error', 'Pemindaian gagal: ' + error.message, { timeout: 9000 });
+    toast('error', tp('Pemindaian gagal: {error}', { error: error.message }), { timeout: 9000 });
     return false;
   } finally {
     setBusy(false);
@@ -4399,42 +4677,42 @@ async function loadFonts(force = false) {
 async function rescanWithPanel() {
   if (taskGuard()) return;
   const task = openTask({
-    title: 'Memindai ulang font',
-    subtitle: 'Membaca folder font Windows dan registri…',
-    hint: 'Pemindaian koleksi besar bisa memakan waktu beberapa saat.',
+    title: t('Memindai ulang font'),
+    subtitle: t('Membaca folder font Windows dan registri…'),
+    hint: t('Pemindaian koleksi besar bisa memakan waktu beberapa saat.'),
     rows: [
-      { name: 'Folder font sistem', meta: 'C:\\Windows\\Fonts' },
-      { name: 'Folder font pengguna', meta: '%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts' },
-      { name: 'Registri font Windows', meta: 'HKCU / HKLM' }
+      { name: t('Folder font sistem'), meta: 'C:\\Windows\\Fonts' },
+      { name: t('Folder font pengguna'), meta: '%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts' },
+      { name: t('Registri font Windows'), meta: t('HKCU / HKLM') }
     ]
   });
-  task.indeterminate('Memindai…');
+  task.indeterminate(t('Memindai…'));
 
   try {
     const ok = await loadFonts(true);
     const total = (state.stats && state.stats.total) || state.fonts.length;
     if (ok) {
-      task.markAll('done', 'Selesai');
+      task.markAll('done', t('Selesai'));
       task.finish({
-        title: 'Pemindaian selesai',
+        title: t('Pemindaian selesai'),
         subtitle: `${fmtNumber(total)} berkas font terdeteksi.`,
-        hint: 'Daftar font sudah diperbarui.',
+        hint: t('Daftar font sudah diperbarui.'),
         tone: 'done'
       });
     } else {
-      task.markAll('fail', 'Gagal');
+      task.markAll('fail', t('Gagal'));
       task.finish({
-        title: 'Pemindaian gagal',
-        subtitle: 'Lihat pesan kesalahan di daftar utama.',
+        title: t('Pemindaian gagal'),
+        subtitle: t('Lihat pesan kesalahan di daftar utama.'),
         hint: '',
         tone: 'fail',
         autoClose: false
       });
     }
   } catch (error) {
-    task.markAll('fail', 'Gagal');
+    task.markAll('fail', t('Gagal'));
     task.finish({
-      title: 'Pemindaian gagal',
+      title: t('Pemindaian gagal'),
       subtitle: error.message,
       hint: '',
       tone: 'fail',
@@ -4452,7 +4730,7 @@ function updateStats() {
   if (!state.stats) return;
   const counts = familyCounts();
   els.stats.total.textContent = fmtNumber(counts.all);
-  els.stats.total.title = `${fmtNumber(counts.all)} keluarga font`;
+  els.stats.total.title = tp('{count} keluarga font', { count: fmtNumber(counts.all) });
   els.stats.files.textContent = fmtNumber(state.stats.total);
   els.stats.system.textContent = fmtNumber(counts.system);
   els.stats.user.textContent = fmtNumber(counts.user);
@@ -4486,9 +4764,11 @@ function setCount(view, value) {
 
 function updateScanNote() {
   if (!state.stats) return;
-  els.scanNote.textContent = `Terakhir dipindai ${fmtTime(state.scannedAt)} · ${fmtNumber(
-    state.stats.total
-  )} berkas · ${fmtBytes(state.stats.totalSize)}`;
+  els.scanNote.textContent = tp('Terakhir dipindai {time} · {count} berkas · {size}', {
+    time: fmtTime(state.scannedAt),
+    count: fmtNumber(state.stats.total),
+    size: fmtBytes(state.stats.totalSize)
+  });
 }
 
 /* -------------------------------------------------------------- navigasi */
@@ -4523,7 +4803,13 @@ function savePrefs() {
   try {
     localStorage.setItem(
       'fm:prefs',
-      JSON.stringify({ v: 2, sample: state.sample, size: state.size, sort: state.sort })
+      JSON.stringify({
+        v: 3,
+        sample: state.sample,
+        size: state.size,
+        sort: state.sort,
+        lang: window.I18N.getLanguage()
+      })
     );
   } catch {
     /* abaikan */
@@ -4536,10 +4822,14 @@ function loadPrefs() {
     if (!raw) return;
     const saved = JSON.parse(raw);
 
+    if (saved.lang === 'id' || saved.lang === 'en') {
+      window.I18N.setLanguage(saved.lang);
+    }
+
     // Versi lama menyimpan teks contoh statis. Pratinjau kini otomatis memakai
     // nama font, jadi teks contoh lama tidak dipulihkan.
     if (
-      saved.v === 2 &&
+      (saved.v === 2 || saved.v === 3) &&
       typeof saved.sample === 'string' &&
       saved.sample.trim() &&
       saved.sample.trim() !== DEFAULT_SAMPLE
@@ -4612,10 +4902,12 @@ function bindEvents() {
   els.selectAll.addEventListener('click', selectAllResults);
   els.clearSelection.addEventListener('click', clearSelection);
   els.deleteSelected.addEventListener('click', confirmDeleteSelection);
+  els.backupSelected.addEventListener('click', backupSelection);
 
   els.loadMore.addEventListener('click', () => appendBatch());
   els.refresh.addEventListener('click', () => rescanWithPanel());
   els.install.addEventListener('click', () => els.fileInput.click());
+  els.openBackupFolder.addEventListener('click', () => openBackupFolder(els.openBackupFolder));
   els.fileInput.addEventListener('change', () => {
     installFiles(els.fileInput.files);
     els.fileInput.value = '';
@@ -4650,6 +4942,10 @@ function bindEvents() {
   window.addEventListener('dragover', onDragOver);
   window.addEventListener('dragleave', onDragLeave);
   window.addEventListener('drop', onDrop);
+
+  for (const btn of $$('.lang-btn')) {
+    btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+  }
 }
 
 let dragDepth = 0;
@@ -4687,6 +4983,143 @@ function onDrop(event) {
 
 /* ------------------------------------------------------------------- init */
 
+/* ------------------------------------------------- bahasa & layar pembuka */
+
+const SPLASH_STAGE_KEYS = {
+  idle: 'Menyiapkan…',
+  folder: 'Memindai folder font…',
+  registry: 'Membaca registri Windows…',
+  metadata: 'Membaca metadata font…',
+  adobe: 'Menambahkan font Adobe Fonts…',
+  ready: 'Selesai'
+};
+
+const splashView = {
+  active: false,
+  target: 0,
+  shown: 0,
+  raf: null,
+  pollTimer: null,
+  minUntil: 0
+};
+
+function syncLanguageButtons() {
+  for (const btn of $$('.lang-btn')) {
+    btn.classList.toggle('is-active', btn.dataset.lang === window.I18N.getLanguage());
+  }
+}
+
+function applyLanguageUI() {
+  window.I18N.applyStatic(document);
+  document.documentElement.lang = window.I18N.getLanguage() === 'en' ? 'en' : 'id';
+  syncLanguageButtons();
+}
+
+function refreshAfterLanguageChange() {
+  applyLocaleFormats();
+  applyLanguageUI();
+  savePrefs();
+  updateStats();
+  updateNavCounts();
+  updateScanNote();
+  render();
+  if (els.drawer && !els.drawer.hidden) {
+    const group = state.activeFamilyKey ? state.familyByKey.get(state.activeFamilyKey) : null;
+    const font = state.activeFontId ? state.fontById.get(state.activeFontId) : null;
+    if (font) {
+      openDrawer(font, { backToFamily: state.fileBackKey || undefined });
+    } else if (group) {
+      openFamilyDrawer(group);
+    }
+  }
+}
+
+function changeLanguage(lang) {
+  if (!['id', 'en'].includes(lang) || lang === window.I18N.getLanguage()) return;
+  window.I18N.setLanguage(lang);
+  refreshAfterLanguageChange();
+}
+
+function setSplashStage(stage) {
+  if (!els.splashStage) return;
+  els.splashStage.textContent = t(SPLASH_STAGE_KEYS[stage] || SPLASH_STAGE_KEYS.idle);
+}
+
+function updateSplashDom(value) {
+  if (els.splashBar) els.splashBar.style.width = `${value}%`;
+  if (els.splashPercent) els.splashPercent.textContent = String(value);
+}
+
+function splashTick() {
+  if (!splashView.active) return;
+  const diff = splashView.target - splashView.shown;
+  splashView.shown = Math.abs(diff) < 0.4 ? splashView.target : splashView.shown + diff * 0.12;
+  updateSplashDom(Math.round(splashView.shown));
+  splashView.raf = requestAnimationFrame(splashTick);
+}
+
+function setSplashProgress(percent, stage) {
+  if (stage && SPLASH_STAGE_KEYS[stage]) setSplashStage(stage);
+  splashView.target = Math.max(0, Math.min(100, Number(percent) || 0));
+}
+
+async function splashPoll() {
+  if (!splashView.active) return;
+  try {
+    const response = await fetch('/api/scan-progress');
+    const data = await response.json().catch(() => null);
+    if (data && data.scan) setSplashProgress(data.scan.percent, data.scan.stage);
+  } catch {
+    /* server belum siap — coba lagi pada tick berikutnya */
+  }
+  if (splashView.active) splashView.pollTimer = setTimeout(splashPoll, 200);
+}
+
+function startSplash() {
+  if (!els.splash) return;
+  splashView.active = true;
+  splashView.target = 0;
+  splashView.shown = 0;
+  splashView.minUntil = Date.now() + 700;
+  els.splash.hidden = false;
+  els.splash.classList.remove('is-leaving');
+  setSplashStage('idle');
+  updateSplashDom(0);
+  splashView.raf = requestAnimationFrame(splashTick);
+  splashPoll();
+}
+
+async function finishSplash() {
+  if (!splashView.active) return;
+  clearTimeout(splashView.pollTimer);
+  cancelAnimationFrame(splashView.raf);
+  setSplashStage('ready');
+  splashView.target = 100;
+  updateSplashDom(100);
+  const wait = Math.max(splashView.minUntil - Date.now(), 260);
+  await new Promise((resolve) => setTimeout(resolve, wait));
+  if (!splashView.active) return;
+  splashView.active = false;
+  if (els.splash) {
+    els.splash.classList.add('is-leaving');
+    setTimeout(() => {
+      if (els.splash) els.splash.hidden = true;
+    }, 340);
+  }
+}
+
+async function loadAppInfo() {
+  try {
+    const { data } = await api('/api/status');
+    if (data && data.version) {
+      els.appVersion.textContent = tp('Font Manager v{version}', { version: data.version });
+      document.title = tp('Font Manager v{version}', { version: data.version });
+    }
+  } catch {
+    /* versi opsional; aplikasi tetap jalan */
+  }
+}
+
 function cacheElements() {
   els = {
     nav: $('#nav'),
@@ -4705,6 +5138,7 @@ function cacheElements() {
     selectVisible: $('#selectVisibleBtn'),
     selectAll: $('#selectAllBtn'),
     clearSelection: $('#clearSelectionBtn'),
+    backupSelected: $('#backupSelectedBtn'),
     deleteSelected: $('#deleteSelectedBtn'),
     refresh: $('#refreshBtn'),
     install: $('#installBtn'),
@@ -4712,6 +5146,7 @@ function cacheElements() {
     viewTitle: $('#viewTitle'),
     viewSub: $('#viewSub'),
     viewInfo: $('#viewInfo'),
+    openBackupFolder: $('#openBackupFolderBtn'),
     empty: $('#emptyState'),
     emptyTitle: $('#emptyTitle'),
     emptyText: $('#emptyText'),
@@ -4722,6 +5157,11 @@ function cacheElements() {
     toasts: $('#toasts'),
     dropOverlay: $('#dropOverlay'),
     scanNote: $('#scanNote'),
+    splash: $('#splash'),
+    splashStage: $('#splashStage'),
+    splashBar: $('#splashBarFill'),
+    splashPercent: $('#splashPercent'),
+    appVersion: $('#appVersion'),
     stats: {
       total: $('#statTotal'),
       files: $('#statFiles'),
@@ -4759,11 +5199,15 @@ async function init() {
   document.body.classList.remove('no-scroll');
   applyIcons();
   loadPrefs();
+  applyLocaleFormats();
+  applyLanguageUI();
   bindEvents();
   applyInitialQuery();
+  startSplash();
   renderSkeleton();
-  els.viewInfo.textContent = 'Memindai…';
-  await Promise.all([loadFonts(false), loadBackups(false)]);
+  els.viewInfo.textContent = t('Memindai…');
+  await Promise.all([loadFonts(false), loadBackups(false), loadAppInfo()]);
+  await finishSplash();
 }
 
 document.addEventListener('DOMContentLoaded', init);

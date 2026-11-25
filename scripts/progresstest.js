@@ -148,6 +148,18 @@ async function main() {
   console.log('server:', base);
   console.log('sumber:', source, bytes.length, 'bytes');
 
+  // ------------------------------------------------ 0. versi & kemajuan pindai
+  const pkg = require('../package.json');
+  const status = await api('/api/status');
+  if (status.version !== pkg.version) {
+    throw new Error(`versi /api/status ${status.version} tidak sama dengan package.json ${pkg.version}`);
+  }
+  const scanInfo = await api('/api/scan-progress');
+  if (!scanInfo.scan || typeof scanInfo.scan.percent !== 'number') {
+    throw new Error('/api/scan-progress tidak mengembalikan kemajuan');
+  }
+  console.log('versi:', status.version, '| pindai:', scanInfo.scan.percent + '%', scanInfo.scan.stage);
+
   // ---------------------------------------------------------- 1. hapus single
   const fileName1 = `fmprog1-${Date.now()}.ttf`;
   const install1 = await installBytes(bytes, fileName1);
